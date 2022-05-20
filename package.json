@@ -1,0 +1,91 @@
+{
+  "name": "web3-token",
+  "version": "0.2.9",
+  "private": false,
+  "description": "Web3 Token is a new way to authenticate users in hybrid dApps using signed messages. Implementation of EIP-4361",
+  "author": "bytesbay",
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build --target lib src/lib.js && cp src/lib.d.ts dist/web3-token.d.ts",
+    "test": "vue-cli-service test:unit",
+    "lint": "vue-cli-service lint"
+  },
+  "main": "dist/web3-token.umd.min.js",
+  "types": "dist/web3-token.d.ts",
+  "dependencies": {
+    "ethers": "5.x.x"
+  },
+  "devDependencies": {
+    "@vue/cli-plugin-babel": "~4.5.0",
+    "@vue/cli-plugin-eslint": "~4.5.0",
+    "@vue/cli-plugin-unit-jest": "^4.5.13",
+    "@vue/cli-service": "~4.5.0",
+    "@vue/test-utils": "^1.0.3",
+    "babel-eslint": "^10.1.0",
+    "core-js": "^3.6.5",
+    "eslint": "^6.7.2",
+    "eslint-plugin-vue": "^6.2.2",
+    "vue": "^2.6.11",
+    "vue-template-compiler": "^2.6.11"
+  },
+  "eslintConfig": {
+    "root": true,
+    "env": {
+      "node": true
+    },
+    "globals": {
+      "Web3": "readonly",
+      "ethereum": "readonly"
+    },
+    "extends": [
+      "plugin:vue/essential",
+      "eslint:recommended"
+    ],
+    "parserOptions": {
+      "parser": "babel-eslint"
+    },
+    "rules": {},
+    "overrides": [
+      {
+        "files": [
+          "**/__tests__/*.{j,t}s?(x)",
+          "**/tests/unit/**/*.spec.{j,t}s?(x)"
+        ],
+        "env": {
+          "jest": true
+        }
+      },
+      {
+        "files": [
+          "**/__tests__/*.{j,t}s?(x)",
+          "**/tests/unit/**/*.spec.{j,t}s?(x)"
+        ],
+        "env": {
+          "jest": true
+        }
+      }
+    ]
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ],
+  "bugs": {
+    "url": "https://github.com/bytesbay/web3-token/issues"
+  },
+  "homepage": "https://github.com/bytesbay/web3-token#readme",
+  "keywords": [
+    "auth",
+    "token",
+    "jwt",
+    "ethereum",
+    "web3",
+    "blockchain"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bytesbay/web3-token.git"
+  }
+}
