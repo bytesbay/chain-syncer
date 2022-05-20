@@ -1,17 +1,17 @@
 {
-  "name": "web3-token",
-  "version": "0.2.9",
+  "name": "chain-syncer",
+  "version": "1.0.0",
   "private": false,
-  "description": "Web3 Token is a new way to authenticate users in hybrid dApps using signed messages. Implementation of EIP-4361",
+  "description": "",
   "author": "bytesbay",
   "scripts": {
     "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build --target lib src/lib.js && cp src/lib.d.ts dist/web3-token.d.ts",
+    "build": "vue-cli-service build --target lib src/lib.js && cp src/lib.d.ts dist/chain-syncer.d.ts",
     "test": "vue-cli-service test:unit",
     "lint": "vue-cli-service lint"
   },
-  "main": "dist/web3-token.umd.min.js",
-  "types": "dist/web3-token.d.ts",
+  "main": "dist/chain-syncer.umd.min.js",
+  "types": "dist/chain-syncer.d.ts",
   "dependencies": {
     "ethers": "5.x.x"
   },
@@ -72,13 +72,13 @@
     "not dead"
   ],
   "bugs": {
-    "url": "https://github.com/bytesbay/web3-token/issues"
+    "url": "https://github.com/bytesbay/chain-syncer/issues"
   },
-  "homepage": "https://github.com/bytesbay/web3-token#readme",
+  "homepage": "https://github.com/bytesbay/chain-syncer#readme",
   "keywords": [
-    "auth",
-    "token",
-    "jwt",
+    "chain-state",
+    "sync",
+    "ethersjs",
     "ethereum",
     "web3",
     "blockchain"
@@ -86,6 +86,6 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/bytesbay/web3-token.git"
+    "url": "git+https://github.com/bytesbay/chain-syncer.git"
   }
 }
