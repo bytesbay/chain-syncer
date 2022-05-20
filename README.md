@@ -1,4 +1,4 @@
-![Project Presentation](https://github.com/bytesbay/web3-token/raw/main/resources/logo.jpg "Web3 Token")
+<!-- ![Project Presentation](https://github.com/bytesbay/web3-token/raw/main/resources/logo.jpg "Web3 Token")
 
 # Web3 Token
 
@@ -164,4 +164,4 @@ Name | Description | Required | Example
 ---
 
 ## License
-Web3 Token is released under the MIT license. © 2021 Miroslaw Shpak
+Web3 Token is released under the MIT license. © 2021 Miroslaw Shpak -->
