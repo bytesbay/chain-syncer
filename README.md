@@ -68,7 +68,7 @@ syncer.on('Items.Transfer#default-stream', async (
 
   // global_index is a uniq id of event which is created from block number and logIndex padded with zeros
 
-  const item = !!await Item.findOne({ _id: token_id });
+  const item = await Item.findOne({ _id: token_id });
 
   if(!item) { // postpone until item created
     return false;
