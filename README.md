@@ -1,121 +1,99 @@
-<!-- ![Project Presentation](https://github.com/bytesbay/web3-token/raw/main/resources/logo.jpg "Web3 Token")
+<!-- ![Project Presentation](https://github.com/bytesbay/web3-token/raw/main/resources/logo.jpg "Web3 Token") -->
 
-# Web3 Token
+# Chain Syncer
 
-Web3 Token is a new way to authenticate users. See [this article](https://medium.com/@bytesbay/you-dont-need-jwt-anymore-974aa6196976) for more info (later I'll add this info to this readme). Implementation of [EIP-4361](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-4361.md).
-
-## Version 2 updates 🎉
-- I'm now 90% following [EIP-4361](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-4361.md). Why 90%? Because i don't like some things in that standard that makes it more difficult to use it for developers.
-- `body` (3rd parameter) is now deprecated.
+Chain Syncer is a module which allows you to synchronize your app with any ethereum-compatible blockchain/contract state. Fast. Realtime. Reliable.
 
 ---
 ## Install
 
-With [web3](https://www.npmjs.com/package/web3) package:
+Works only with [ethers](https://www.npmjs.com/package/ethers) package, so don't forget to install it:
 
 ```bash
-$ npm i web3-token web3
-```
-
-or with [ethers](https://www.npmjs.com/package/ethers) package:
-
-```bash
-$ npm i web3-token ethers
+$ npm i chain-syncer ethers
 ```
 
 ---
 
-## Example usage (Client side)
-
-Using [Web3](https://www.npmjs.com/package/web3) package:
-
-```js
-import Web3 from 'web3';
-import Web3Token from 'web3-token';
-
-// Connection to MetaMask wallet
-const web3 = new Web3(ethereum);
-await ethereum.request({ method: 'eth_requestAccounts'});
-
-// getting address from which we will sign message
-const address = (await web3.eth.getAccounts())[0];
-
-// generating a token with 1 day of expiration time
-const token = await Web3Token.sign(msg => web3.eth.personal.sign(msg, address), '1d');
-
-// attaching token to authorization header ... for example
-```
+## Example usage
 
 Using [Ethers](https://www.npmjs.com/package/ethers) package:
 
 ```js
-import { ethers } from "ethers";
-import Web3Token from 'web3-token';
+const { ChainSyncer, InMemoryAdapter } = require('chain-syncer');
 
-// Connection to MetaMask wallet
-const provider = new ethers.providers.Web3Provider(window.ethereum);
-const signer = provider.getSigner();
+const default_adapter_which_you_need_to_change_to_any_other = new InMemoryAdapter();
 
-// generating a token with 1 day of expiration time
-const token = await Web3Token.sign(async msg => await signer.signMessage(msg), '1d');
+const ethersjs_provider = new Ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545'); // BSC testnet rpc
 
-// attaching token to authorization header ... for example
-```
-
----
-
-## Example usage (Server side)
-```js
-const Web3Token = require('web3-token');
-
-// getting token from authorization header ... for example
-const token = req.headers['Authorization']
-
-const { address, body } = await Web3Token.verify(token);
-
-// now you can find that user by his address 
-// (better to do it case insensitive)
-req.user = await User.findOne({ address });
-```
-
----
-
-## Handle exceptions
-
-```js
-const generateToken = async () => {
-  if (!window.ethereum) {
-    return console.log('Please install and activate the metamask extension!');
-  }
-
-  const provider = new ethers.providers.Web3Provider(window.ethereum);
-  const signer = provider.getSigner();
-
-  try {
-    return await Web3Token.sign(async msg => {
-      try {
-        return await signer.signMessage(msg);
-      }
-      catch (err) {
-        const { reason } = err;
-        if (reason === "unknown account #0") {
-          return console.log('Have you unlocked metamask and are connected to this page?')
-        }
-
-        console.log(err.toString());
-      }
-    }, '1d');
-  }
-  catch (err) {
-    if (/returns a signature/.test(err.toString())) {
-      return;
+const contracts = {
+  'Items': {
+    abi: [ /* ... */ ],
+    network: {
+      address: '0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56', 
+      deployed_transaction: '0x0f01fc521030f178115c880e200b09a40c9510f49de227aa880276f92670a3d6'
     }
-    console.log(err.toString());
   }
 }
+
+const syncer = new ChainSyncer(default_adapter_which_you_need_to_change_to_any_other, {
+
+  tick_interval: 3000,
+  
+  query_block_limit: 1000,
+  
+  verbose: true,
+  
+  block_time: 3500,
+  
+  ethers_provider: ethersjs_provider,
+  
+  async contractsGetter(contract_name) {
+    const contract = contracts[contract_name];
+    return {
+      inst: new Ethers.Contract(contract.network.address, contract.abi, ethersjs_provider),
+      deployed_transaction_hash: contract.network.deployed_transaction,
+    };
+  },
+});
+
+syncer.start();
+
+syncer.on('Items.Transfer#default-stream', async (
+  from, 
+  to, 
+  token_id, 
+  { global_index, from_address, block_number, block_timestamp, transaction_hash }
+) => {
+
+  // global_index is a uniq id of event which is created from block number and logIndex padded with zeros
+
+  const item = !!await Item.findOne({ _id: token_id });
+
+  if(!item) { // postpone until item created
+    return false;
+  }
+
+  item.owner = to;
+  item.updatedAt = new Date(block_timestamp * 1000);
+  await item.save();
+  
+  // Best practise is doing something like that, so you are sure that you have the latest state of 'owner' field
+  //
+  // await Item.updateOne({
+  //   _id: token_id,
+  //   'syncdata.owner': { $lt: global_index }
+  // }, {
+  //   'syncdata.owner': global_index,
+  //   owner: to,
+  // })
+  
+  // you can notify user that he has new items
+}));
+
 ```
 
-## Advanced usage with options (Client&Server side)
+<!-- ## Advanced usage with options (Client&Server side)
 ```js
 
 // I assume here a lot of things to be imported 😀
@@ -134,34 +112,37 @@ const { address, body } = await Web3Token.verify(token, {
   domain: 'worldofdefish.com'
 });
 
-```
+``` -->
 
 ---
 
 ## API
 
-### sign(signer, options)
+### constructor(adapter, options)
 Name | Description | Required | Example
 --- | --- | --- | ---
-`signer` | A function that returns a promise with signature string eg: web3.personal.sign(`data`, `address`) | `required` | `(body) => web3.personal.sign(body, '0x23..1234')`
-`options` | An options object or, if passed a string, will be used as an `expire_in` option | `optional` (default: `'1d'`) | `{}` or `'1 day'`
-`options.expires_in` | A string that represents a time span ([see ms module](https://github.com/vercel/ms)) or a number of milliseconds | `optional` (default: `1d`) | `'1 day'`
-`options.not_before` | A date after which the token becomes usable | `optional` | `new Date('12-12-2012')`
-`options.expiration_time` | A date till when token is valid. Overwrites `expire_in` parameter | `optional` | `new Date('12-12-2012')`
-`options.statement` | A human-readable ASCII assertion that the user will sign, and it must not contain `'\n'` | `optional` | `'I accept the ServiceOrg Terms of Service: https://service.org/tos'`
-`options.domain` | Authority that is requesting the signing. | `optional`(Unless verifier won't ask for it) | `'example.com'`
-`options.nonce` | A randomized token used to prevent replay attacks, at least 8 alphanumeric characters. | `optional` | `12345678`
-`options.request_id` | A system-specific identifier that may be used to uniquely refer to the sign-in request. | `optional` | `231`
+`adapter` | An adapter interface for storing event data. As a test you can use built-in `InMemoryAdapter`, but better build your own adapter to any DB. | `required` | `new InMemoryAdapter()`
+`options` | An options object | `required` | -
+`options.tick_interval` | determinates how often will process unprocessed events | `optional` (default: `2000`) | `3000` (every 3 seconds)
+`options.query_block_limit` | Maximum amount of blocks that can be scanned per tick. For example official BSC RPC allows up to 2000 blocks per request. | `optional` (default: `100`) | `2000`
+`options.query_unprocessed_events_limit` | Maximum amount of events that can be scanned per tick | `optional` (default: `100`) | `5000`
+`options.verbose` | A flag which enables debug mode and logging | `optional` (default: `false`) | `true`
+`options.mode` | Module mode. Possible: `'events'` or `'processing'` or `'universal'`. `'events'` mode only scans events without processing. `'processing'` mode is only processing new events. `'universal'` doing both. | `optional` (default: `'universal'`) | `'processing'`
+`options.block_time` | Block time of a network you are working with. For example `3500` for BSC. | `required` | `3500` (BSC network)
+`options.ethers_provider` | Ethers.js provider | `required` | `new Ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545')`
+`options.contractsGetter` | An async function that returns object with ethers.js contract instance and tx hash of its deploy | `required` | `async () => ({ inst: new Ethers.Contract(contracts[contract_name].network.address, contracts[contract_name].abi, ethersjs_provider), deployed_transaction_hash: contracts[contract_name].network.deployed_transaction })`
 
 
-### verify(token, options)
+### on(stream_name, listener)
 Name | Description | Required | Example
 --- | --- | --- | ---
-`token` | A token string that is generated from `sign()` | `required` | `...`
-`options` | An options object | `optional` | `{ domain: 'example.com' }`
-`options.domain` | The domain you want to accept | `optional` | `'example.com'`
+`stream_name` | Steam name is a string which contains contract, event and stream id (actually just id of this listener if you have microservices for example) | `required` | `'Items.Transfer#default-stream'`
+`listener` | Listener function, last argument is always object of event parameters. If `false` returned from listener - event will be postponed till next processing tick | `required` | `async ({ global_index, from_address, block_number, block_timestamp, transaction_hash }) => { ... }`
+
+### start()
+Starts scanner and processor
 
 ---
 
 ## License
-Web3 Token is released under the MIT license. © 2021 Miroslaw Shpak -->
+Chain Syncer is released under the MIT license. © 2022 Miroslaw Shpak
