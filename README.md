@@ -2,7 +2,7 @@
 
 # Chain Syncer
 
-Chain Syncer is a module which allows you to synchronize your app with any ethereum-compatible blockchain/contract state. Fast. Realtime. Reliable.
+Chain Syncer is a JS module which allows you to synchronize your app with any ethereum-compatible blockchain/contract state. Fast. Realtime. Reliable.
 
 ---
 ## Install
