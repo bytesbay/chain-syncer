@@ -159,7 +159,7 @@ export const ChainSyncer = function(adapter, opts = {}) {
     try {
       var max_block = await this.ethers_provider.getBlockNumber();
     } catch (error) {
-      console.error('Error while fetching max_block, will try again anyway.', error.message);
+      console.error('Error while fetching max_block, will try again anyway:', error ? error.message : 'Unknown error');
     }
 
     if(max_block) {
@@ -171,34 +171,35 @@ export const ChainSyncer = function(adapter, opts = {}) {
         for (const i in _contracts) {
           const contract_name = _contracts[i];
           proms.push(
-            this.getContractEvents(
-              contract_name, max_block
-            ).catch(err => {
-              console.error('Error in gethering events for contract', `${contract_name}:`, err.message);
-              return null;
-            })
+            this.getContractEvents(contract_name, max_block)
+              .catch(err => {
+                console.error('Error in gethering events for contract', `${contract_name}:`, err.message);
+                return null;
+              })
           );
         }
 
-        const data = await Promise.all(proms).then(data => data.filter(n => n));
+        if(!proms.length) {
+          console.log(`[MAXBLOCK: ${max_block}]`, 'No contracts to process');
+        } else {
+          const data = await Promise.all(proms).then(data => data.filter(n => n));
 
-        const events = await this.processEvents(data);
+          const events = await this.processEvents(data);
 
-        await Promise.all(
-          data.map(n => this.adapter.saveLatestUnprocessedBlockNumber(n.contract_name, n.block))
-        );
+          await Promise.all(
+            data.map(n => this.adapter.saveLatestUnprocessedBlockNumber(n.contract_name, n.block))
+          );
 
-        if(this.verbose) {
-          console.log(`[MAXBLOCK: ${max_block}]`, 'Defualt tick ... ', events.length, 'events added');
-        }
+          if(this.verbose) {
+            console.log(`[MAXBLOCK: ${max_block}]`, 'Defualt tick ... ', events.length, 'events added');
+          }
+        } 
       } catch (error) {
         console.error('Error in default tick', error);
       }
     }
 
-    this._events_timeout = setTimeout(() => {
-      this.onEventsTick()
-    }, this.block_time / 2)
+    this._events_timeout = setTimeout(() => this.onEventsTick(), this.block_time / 2)
   }
 
   this.onProcessingTick = async function() {

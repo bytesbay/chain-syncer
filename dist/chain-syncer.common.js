@@ -7172,13 +7172,14 @@ var es_number_constructor = __webpack_require__("a9e3");
 
 
 
+
 var padIndex = function padIndex(num) {
   return num.toString().padStart(10, '0');
 };
 
 var parse_event_parseEvent = function parseEvent(contract_name, event, block, tx) {
   if (!tx) {
-    console.error('Event has no tx, trying to fetch again (problem with RPC)');
+    throw new Error('Event has no tx, trying to fetch again (problem with RPC)');
   }
 
   var opts = {
@@ -7882,11 +7883,11 @@ var chain_syncer_ChainSyncer = function ChainSyncer(adapter) {
           case 6:
             _context5.prev = 6;
             _context5.t0 = _context5["catch"](0);
-            console.error('Error while fetching max_block, will try again anyway.', _context5.t0.message);
+            console.error('Error while fetching max_block, will try again anyway:', _context5.t0 ? _context5.t0.message : 'Unknown error');
 
           case 9:
             if (!max_block) {
-              _context5.next = 29;
+              _context5.next = 33;
               break;
             }
 
@@ -7908,49 +7909,60 @@ var chain_syncer_ChainSyncer = function ChainSyncer(adapter) {
               _loop(i);
             }
 
-            _context5.next = 17;
+            if (proms.length) {
+              _context5.next = 19;
+              break;
+            }
+
+            console.log("[MAXBLOCK: ".concat(max_block, "]"), 'No contracts to process');
+            _context5.next = 28;
+            break;
+
+          case 19:
+            _context5.next = 21;
             return Promise.all(proms).then(function (data) {
               return data.filter(function (n) {
                 return n;
               });
             });
 
-          case 17:
+          case 21:
             data = _context5.sent;
-            _context5.next = 20;
+            _context5.next = 24;
             return this.processEvents(data);
 
-          case 20:
+          case 24:
             events = _context5.sent;
-            _context5.next = 23;
+            _context5.next = 27;
             return Promise.all(data.map(function (n) {
               return _this3.adapter.saveLatestUnprocessedBlockNumber(n.contract_name, n.block);
             }));
 
-          case 23:
+          case 27:
             if (this.verbose) {
               console.log("[MAXBLOCK: ".concat(max_block, "]"), 'Defualt tick ... ', events.length, 'events added');
             }
 
-            _context5.next = 29;
+          case 28:
+            _context5.next = 33;
             break;
 
-          case 26:
-            _context5.prev = 26;
+          case 30:
+            _context5.prev = 30;
             _context5.t1 = _context5["catch"](10);
             console.error('Error in default tick', _context5.t1);
 
-          case 29:
+          case 33:
             this._events_timeout = setTimeout(function () {
-              _this3.onEventsTick();
+              return _this3.onEventsTick();
             }, this.block_time / 2);
 
-          case 30:
+          case 34:
           case "end":
             return _context5.stop();
         }
       }
-    }, _callee5, this, [[0, 6], [10, 26]]);
+    }, _callee5, this, [[0, 6], [10, 30]]);
   }));
   this.onProcessingTick = /*#__PURE__*/_asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee6() {
     var _this4 = this;

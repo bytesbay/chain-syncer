@@ -5,7 +5,7 @@ const padIndex = num => {
 export const parseEvent = function(contract_name, event, block, tx) {
 
   if(!tx) {
-    console.error('Event has no tx, trying to fetch again (problem with RPC)');
+    throw new Error('Event has no tx, trying to fetch again (problem with RPC)');
   }
 
   const opts = {
