@@ -7896,7 +7896,7 @@ var chain_syncer_ChainSyncer = function ChainSyncer(adapter) {
 
           case 9:
             if (!max_block) {
-              _context5.next = 33;
+              _context5.next = 34;
               break;
             }
 
@@ -7918,60 +7918,64 @@ var chain_syncer_ChainSyncer = function ChainSyncer(adapter) {
               _loop(i);
             }
 
+            proms = proms.filter(function (n) {
+              return n !== null;
+            });
+
             if (proms.length) {
-              _context5.next = 19;
+              _context5.next = 20;
               break;
             }
 
             console.log("[MAXBLOCK: ".concat(max_block, "]"), 'No contracts to process');
-            _context5.next = 28;
+            _context5.next = 29;
             break;
 
-          case 19:
-            _context5.next = 21;
+          case 20:
+            _context5.next = 22;
             return Promise.all(proms).then(function (data) {
               return data.filter(function (n) {
                 return n;
               });
             });
 
-          case 21:
+          case 22:
             data = _context5.sent;
-            _context5.next = 24;
+            _context5.next = 25;
             return this.processEvents(data);
 
-          case 24:
+          case 25:
             events = _context5.sent;
-            _context5.next = 27;
+            _context5.next = 28;
             return Promise.all(data.map(function (n) {
               return _this3.adapter.saveLatestUnprocessedBlockNumber(n.contract_name, n.block);
             }));
 
-          case 27:
+          case 28:
             if (this.verbose) {
               console.log("[MAXBLOCK: ".concat(max_block, "]"), 'Defualt tick ... ', events.length, 'events added');
             }
 
-          case 28:
-            _context5.next = 33;
+          case 29:
+            _context5.next = 34;
             break;
 
-          case 30:
-            _context5.prev = 30;
+          case 31:
+            _context5.prev = 31;
             _context5.t1 = _context5["catch"](10);
             console.error('Error in default tick', _context5.t1);
 
-          case 33:
+          case 34:
             this._events_timeout = setTimeout(function () {
               return _this3.onEventsTick();
             }, this.block_time / 2);
 
-          case 34:
+          case 35:
           case "end":
             return _context5.stop();
         }
       }
-    }, _callee5, this, [[0, 6], [10, 30]]);
+    }, _callee5, this, [[0, 6], [10, 31]]);
   }));
   this.onProcessingTick = /*#__PURE__*/_asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee6() {
     var _this4 = this;

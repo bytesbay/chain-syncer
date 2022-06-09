@@ -164,7 +164,7 @@ export const ChainSyncer = function(adapter, opts = {}) {
 
     if(max_block) {
       try {
-        const proms = [];
+        let proms = [];
 
         const _contracts = this._used_contracts.filter(n => !this.ignore_contracts.includes(n))
 
@@ -178,6 +178,8 @@ export const ChainSyncer = function(adapter, opts = {}) {
               })
           );
         }
+
+        proms = proms.filter(n => n !== null);
 
         if(!proms.length) {
           console.log(`[MAXBLOCK: ${max_block}]`, 'No contracts to process');
