@@ -179,8 +179,6 @@ export const ChainSyncer = function(adapter, opts = {}) {
           );
         }
 
-        proms = proms.filter(n => n !== null);
-
         if(!proms.length) {
           console.log(`[MAXBLOCK: ${max_block}]`, 'No contracts to process');
         } else {
