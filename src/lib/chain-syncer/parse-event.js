@@ -8,6 +8,10 @@ export const parseEvent = function(contract_name, event, block, tx) {
     throw new Error('Event has no tx, trying to fetch again (problem with RPC)');
   }
 
+  if(!block) {
+    throw new Error('Event has no block, trying to fetch again (problem with RPC)');
+  }
+
   const opts = {
     id: this._parseEventId(event),
     contract: contract_name, 

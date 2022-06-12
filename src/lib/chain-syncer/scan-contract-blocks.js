@@ -1,5 +1,12 @@
 export const scanContractBlocks = async function(contract, contract_name, from_block, to_block) {
-  let events = await contract.inst.queryFilter({}, from_block, to_block);
+
+  if((to_block - from_block) > 60) {
+    var ethers_provider = this.ethers_provider;
+  } else {
+    var ethers_provider = this.archive_ethers_provider;
+  }
+
+  let events = await (contract.inst.connect(ethers_provider)).queryFilter({}, from_block, to_block);
 
   events = events.filter(n => {
     const event = n;

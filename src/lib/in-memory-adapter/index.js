@@ -1,9 +1,22 @@
-export const InMemoryAdapter = function() {
-  
-  this.latest_blocks = {};
-  this.events = [];
+import { QueueEvent } from "./QueueEvent";
 
-  this.getLatestUnprocessedBlockNumber = function(contract_name) {
+export class InMemoryAdapter {
+
+  latest_blocks = {}
+  events = []
+  events_queue = []
+  subscribers = {}
+  
+  constructor() {
+    
+  }
+
+  /**
+   * 
+   * @param {string} contract_name 
+   * @returns 
+   */
+  getLatestScannedBlockNumber(contract_name) {
 
     const item = this.latest_blocks[contract_name];
 
@@ -14,38 +27,118 @@ export const InMemoryAdapter = function() {
     return 0;
   }
 
-  this.saveLatestUnprocessedBlockNumber = function(contract_name, block_number) {
+  /**
+   * 
+   * @param {string} subscriber 
+   * @param {Array<string>} events 
+   */
+  removeQueue(subscriber, events) {
+    
+    const indexes = events.map(n => this.events_queue.findIndex(z => z.event === n && z.subscriber === subscriber))
+
+    indexes.forEach(n => {
+      this.events_queue.splice(n, 1);
+    })
+  }
+
+  /**
+   * 
+   * @param {string} subscriber 
+   * @param {Array<string>} events 
+   */
+  addUnprocessedEventsToQueue(subscriber, events) {
+
+    events.forEach(e => {
+      const [ contract, event ] = e.split('.');
+
+      const unprocessed_events = this.events.filter(n => {
+        return !n.processed_subscribers.includes(subscriber) && n.contract === contract && n.event === event
+      });
+
+      this.events_queue.push(
+        ...unprocessed_events.map(n => new QueueEvent(n, subscriber))
+      );
+    })
+  }
+
+  /**
+   * 
+   * @returns 
+   */
+  selectAllSubscribers() {
+    return { ...this.subscribers };
+  }
+
+  /**
+   * 
+   * @param {string} subscriber 
+   * @param {Array<string>} events 
+   * @returns 
+   */
+  updateSubscriber(subscriber, events) {
+
+    events = [ ...events.sort() ];
+
+    if(!this.subscribers[subscriber]) {
+      this.subscribers[subscriber] = {
+        events: [],
+        added_at: {
+          ...this.latest_blocks
+        }
+      };
+    }
+
+    const events_added = events.filter(n => !this.subscribers[subscriber].events.includes(n))
+    const events_removed = this.subscribers[subscriber].events.filter(n => !events.includes(n))
+
+    this.subscribers[subscriber].events = events;
+
+    return { events_added, events_removed };
+  }
+
+  saveLatestScannedBlockNumber(contract_name, block_number) {
     this.latest_blocks[contract_name] = block_number;
   }
 
-  this.selectAllUnprocessedEvents = function(
-    contract,
-    event,
-    stream,
-    limit,
+  /**
+   * 
+   * @param {string} subscriber 
+   * @returns {string}
+   */
+  selectAllUnprocessedEventsBySubscriber(
+    subscriber
   ) {
 
-    const res = this.events.filter(n => {
-      return n.contract === contract && n.event === event && !n.processed_streams.includes(stream)
-    });
+    const from_queue = this.events_queue.filter(n => n.subscriber === subscriber).map(n => n.event_id);
 
-    res.sort((a, b) => {
-      return a.block_number - b.block_number
-    });
+    const events = this.events.filter(n => from_queue.includes(n.id))
 
-    return res;
+    return events;
   }
 
-  this.setEventStreamProcessed = function(id, stream) {
+  /**
+   * 
+   * @param {string} id 
+   * @param {string} subscriber 
+   */
+  setEventProcessedForSubscriber(id, subscriber) {
 
     const item = this.events.find(n => n.id === id);
 
     if(item) {
-      item.processed_streams.push(stream);
+      item.processed_subscribers.push(subscriber);
+
+      const index = this.events_queue.findIndex(n => n.id !== id && n.subscriber !== subscriber)
+      this.events_queue.splice(index, 1);
     }
   }
 
-  this.filterExistingEvents = function(ids) {
+  /**
+   * 
+   * @param {Array<string>} ids 
+   * @returns {Array<string>} filtered ids
+   */
+  filterExistingEvents(ids) {
 
     const exist_ids = this.events.filter(n => {
       return ids.includes(n.id)
@@ -56,25 +149,31 @@ export const InMemoryAdapter = function() {
     return ids;
   }
 
-  this.archiveData = function(edge_block = 0) {
+  /**
+   * 
+   * @param {Array<any>} events 
+   * @param {Array<string>} subscribers 
+   */
+  saveEvents(events, subscribers) {
 
-    // TODO
+    events = events.map(n => {
 
-  }
-
-  this.saveEvents = function(objects) {
-
-    objects = objects.map(n => {
-
-      n.processed_streams = [];
+      n.processed_subscribers = [];
 
       if(!n.args) { n.args = []; }
 
       return n
     })
 
-    const non_exist_ids = this.filterExistingEvents(objects.map(n => n.id))
+    const non_exist_ids = this.filterExistingEvents(events.map(n => n.id))
+    const events_to_add = events.filter(n => non_exist_ids.includes(n.id))
 
-    this.events.push(...objects.filter(n => non_exist_ids.includes(n.id)));
+    this.events.push(...events_to_add);
+    
+    for (const i in subscribers) {
+      this.events_queue.push(
+        ...events_to_add.map(n => new QueueEvent(n, subscribers[i]))
+      );
+    }
   }
 }
