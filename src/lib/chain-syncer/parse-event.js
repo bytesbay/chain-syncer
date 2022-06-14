@@ -1,5 +1,5 @@
 const padIndex = num => {
-  return num.toString().padStart(10, '0')
+  return num.toString().padStart(6, '0')
 }
 
 export const parseEvent = function(contract_name, event, block, tx) {
