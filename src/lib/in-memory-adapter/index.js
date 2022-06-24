@@ -16,7 +16,7 @@ export class InMemoryAdapter {
    * @param {string} contract_name 
    * @returns 
    */
-  getLatestScannedBlockNumber(contract_name) {
+  async getLatestScannedBlockNumber(contract_name) {
 
     const item = this.latest_blocks[contract_name];
 
@@ -32,7 +32,7 @@ export class InMemoryAdapter {
    * @param {string} subscriber 
    * @param {Array<string>} events 
    */
-  removeQueue(subscriber, events) {
+  async removeQueue(subscriber, events) {
     
     const indexes = events.map(n => this.events_queue.findIndex(z => z.event === n && z.subscriber === subscriber))
 
@@ -46,13 +46,13 @@ export class InMemoryAdapter {
    * @param {string} subscriber 
    * @param {Array<string>} events 
    */
-  addUnprocessedEventsToQueue(subscriber, events) {
+  async addUnprocessedEventsToQueue(subscriber, events) {
 
     events.forEach(e => {
       const [ contract, event ] = e.split('.');
 
       const unprocessed_events = this.events.filter(n => {
-        return !n.processed_subscribers.includes(subscriber) && n.contract === contract && n.event === event
+        return !n.processed_subscribers[subscriber] && n.contract === contract && n.event === event
       });
 
       this.events_queue.push(
@@ -65,7 +65,7 @@ export class InMemoryAdapter {
    * 
    * @returns 
    */
-  selectAllSubscribers() {
+  async selectAllSubscribers() {
     return { ...this.subscribers };
   }
 
@@ -75,7 +75,7 @@ export class InMemoryAdapter {
    * @param {Array<string>} events 
    * @returns 
    */
-  updateSubscriber(subscriber, events) {
+  async updateSubscriber(subscriber, events) {
 
     events = [ ...events.sort() ];
 
@@ -96,7 +96,7 @@ export class InMemoryAdapter {
     return { events_added, events_removed };
   }
 
-  saveLatestScannedBlockNumber(contract_name, block_number) {
+  async saveLatestScannedBlockNumber(contract_name, block_number) {
     this.latest_blocks[contract_name] = block_number;
   }
 
@@ -105,7 +105,7 @@ export class InMemoryAdapter {
    * @param {string} subscriber 
    * @returns {string}
    */
-  selectAllUnprocessedEventsBySubscriber(
+  async selectAllUnprocessedEventsBySubscriber(
     subscriber
   ) {
 
@@ -121,12 +121,12 @@ export class InMemoryAdapter {
    * @param {string} id 
    * @param {string} subscriber 
    */
-  setEventProcessedForSubscriber(id, subscriber) {
+  async setEventProcessedForSubscriber(id, subscriber) {
 
     const item = this.events.find(n => n.id === id);
 
     if(item) {
-      item.processed_subscribers.push(subscriber);
+      item.processed_subscribers[subscriber] = true;
 
       const index = this.events_queue.findIndex(n => n.id !== id && n.subscriber !== subscriber)
       this.events_queue.splice(index, 1);
@@ -138,7 +138,7 @@ export class InMemoryAdapter {
    * @param {Array<string>} ids 
    * @returns {Array<string>} filtered ids
    */
-  filterExistingEvents(ids) {
+  async filterExistingEvents(ids) {
 
     const exist_ids = this.events.filter(n => {
       return ids.includes(n.id)
@@ -154,11 +154,11 @@ export class InMemoryAdapter {
    * @param {Array<any>} events 
    * @param {Array<string>} subscribers 
    */
-  saveEvents(events, subscribers) {
+  async saveEvents(events, subscribers) {
 
     events = events.map(n => {
 
-      n.processed_subscribers = [];
+      n.processed_subscribers = {};
 
       if(!n.args) { n.args = []; }
 

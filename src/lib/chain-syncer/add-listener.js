@@ -5,7 +5,7 @@ export const addListener = async function(event, listener) {
   }
 
   if(this._is_started) {
-    throw new Error('Unfortunately, you cannot add new listeners after start');
+    throw new Error('Unfortunately, you cannot add new listeners after module started');
   }
 
   const {
