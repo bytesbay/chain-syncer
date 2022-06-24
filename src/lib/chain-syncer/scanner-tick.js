@@ -1,0 +1,32 @@
+export const scannerTick = async function() {
+  try {
+    var max_block = await this.ethers_provider.getBlockNumber();
+  } catch (error) {
+    console.error('Error while fetching max_block, will try again anyway:', error ? error.message : 'Unknown error');
+  }
+
+  if(max_block) {
+    try {
+
+      const { scans, events } = await this.scanContracts(max_block);
+
+      if(!scans.length) {
+        console.log(`[MAXBLOCK: ${max_block}]`, 'No scans executed');
+      } else {
+    
+        await this.saveLatestBlocks(scans);
+    
+        if(this.verbose) {
+          console.log(`[MAXBLOCK: ${max_block}]`, events.length, 'events added');
+        }
+
+        await this.safeRescan(max_block);
+      }
+
+    } catch (error) {
+      console.error('Error in scanner', error);
+    }
+  }
+
+  this._scanner_timeout = setTimeout(() => this.scannerTick(), this.block_time)
+}

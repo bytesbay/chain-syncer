@@ -2944,6 +2944,71 @@ module.exports = typeof window == 'object' && typeof Deno != 'object';
 
 /***/ }),
 
+/***/ "60da":
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var DESCRIPTORS = __webpack_require__("83ab");
+var uncurryThis = __webpack_require__("e330");
+var call = __webpack_require__("c65b");
+var fails = __webpack_require__("d039");
+var objectKeys = __webpack_require__("df75");
+var getOwnPropertySymbolsModule = __webpack_require__("7418");
+var propertyIsEnumerableModule = __webpack_require__("d1e7");
+var toObject = __webpack_require__("7b0b");
+var IndexedObject = __webpack_require__("44ad");
+
+// eslint-disable-next-line es-x/no-object-assign -- safe
+var $assign = Object.assign;
+// eslint-disable-next-line es-x/no-object-defineproperty -- required for testing
+var defineProperty = Object.defineProperty;
+var concat = uncurryThis([].concat);
+
+// `Object.assign` method
+// https://tc39.es/ecma262/#sec-object.assign
+module.exports = !$assign || fails(function () {
+  // should have correct order of operations (Edge bug)
+  if (DESCRIPTORS && $assign({ b: 1 }, $assign(defineProperty({}, 'a', {
+    enumerable: true,
+    get: function () {
+      defineProperty(this, 'b', {
+        value: 3,
+        enumerable: false
+      });
+    }
+  }), { b: 2 })).b !== 1) return true;
+  // should work with symbols and should have deterministic property order (V8 bug)
+  var A = {};
+  var B = {};
+  // eslint-disable-next-line es-x/no-symbol -- safe
+  var symbol = Symbol();
+  var alphabet = 'abcdefghijklmnopqrst';
+  A[symbol] = 7;
+  alphabet.split('').forEach(function (chr) { B[chr] = chr; });
+  return $assign({}, A)[symbol] != 7 || objectKeys($assign({}, B)).join('') != alphabet;
+}) ? function assign(target, source) { // eslint-disable-line no-unused-vars -- required for `.length`
+  var T = toObject(target);
+  var argumentsLength = arguments.length;
+  var index = 1;
+  var getOwnPropertySymbols = getOwnPropertySymbolsModule.f;
+  var propertyIsEnumerable = propertyIsEnumerableModule.f;
+  while (argumentsLength > index) {
+    var S = IndexedObject(arguments[index++]);
+    var keys = getOwnPropertySymbols ? concat(objectKeys(S), getOwnPropertySymbols(S)) : objectKeys(S);
+    var length = keys.length;
+    var j = 0;
+    var key;
+    while (length > j) {
+      key = keys[j++];
+      if (!DESCRIPTORS || call(propertyIsEnumerable, S, key)) T[key] = S[key];
+    }
+  } return T;
+} : $assign;
+
+
+/***/ }),
+
 /***/ "6547":
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -4159,6 +4224,84 @@ module.exports = function (argument) {
 
 /***/ }),
 
+/***/ "a434":
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var $ = __webpack_require__("23e7");
+var global = __webpack_require__("da84");
+var toAbsoluteIndex = __webpack_require__("23cb");
+var toIntegerOrInfinity = __webpack_require__("5926");
+var lengthOfArrayLike = __webpack_require__("07fa");
+var toObject = __webpack_require__("7b0b");
+var arraySpeciesCreate = __webpack_require__("65f0");
+var createProperty = __webpack_require__("8418");
+var arrayMethodHasSpeciesSupport = __webpack_require__("1dde");
+
+var HAS_SPECIES_SUPPORT = arrayMethodHasSpeciesSupport('splice');
+
+var TypeError = global.TypeError;
+var max = Math.max;
+var min = Math.min;
+var MAX_SAFE_INTEGER = 0x1FFFFFFFFFFFFF;
+var MAXIMUM_ALLOWED_LENGTH_EXCEEDED = 'Maximum allowed length exceeded';
+
+// `Array.prototype.splice` method
+// https://tc39.es/ecma262/#sec-array.prototype.splice
+// with adding support of @@species
+$({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT }, {
+  splice: function splice(start, deleteCount /* , ...items */) {
+    var O = toObject(this);
+    var len = lengthOfArrayLike(O);
+    var actualStart = toAbsoluteIndex(start, len);
+    var argumentsLength = arguments.length;
+    var insertCount, actualDeleteCount, A, k, from, to;
+    if (argumentsLength === 0) {
+      insertCount = actualDeleteCount = 0;
+    } else if (argumentsLength === 1) {
+      insertCount = 0;
+      actualDeleteCount = len - actualStart;
+    } else {
+      insertCount = argumentsLength - 2;
+      actualDeleteCount = min(max(toIntegerOrInfinity(deleteCount), 0), len - actualStart);
+    }
+    if (len + insertCount - actualDeleteCount > MAX_SAFE_INTEGER) {
+      throw TypeError(MAXIMUM_ALLOWED_LENGTH_EXCEEDED);
+    }
+    A = arraySpeciesCreate(O, actualDeleteCount);
+    for (k = 0; k < actualDeleteCount; k++) {
+      from = actualStart + k;
+      if (from in O) createProperty(A, k, O[from]);
+    }
+    A.length = actualDeleteCount;
+    if (insertCount < actualDeleteCount) {
+      for (k = actualStart; k < len - actualDeleteCount; k++) {
+        from = k + actualDeleteCount;
+        to = k + insertCount;
+        if (from in O) O[to] = O[from];
+        else delete O[to];
+      }
+      for (k = len; k > len - actualDeleteCount + insertCount; k--) delete O[k - 1];
+    } else if (insertCount > actualDeleteCount) {
+      for (k = len - actualDeleteCount; k > actualStart; k--) {
+        from = k + actualDeleteCount - 1;
+        to = k + insertCount - 1;
+        if (from in O) O[to] = O[from];
+        else delete O[to];
+      }
+    }
+    for (k = 0; k < insertCount; k++) {
+      O[k + actualStart] = arguments[k + 2];
+    }
+    O.length = len - actualDeleteCount + insertCount;
+    return A;
+  }
+});
+
+
+/***/ }),
+
 /***/ "a4b4":
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -4979,6 +5122,35 @@ module.exports = store;
 
 /***/ }),
 
+/***/ "c740":
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var $ = __webpack_require__("23e7");
+var $findIndex = __webpack_require__("b727").findIndex;
+var addToUnscopables = __webpack_require__("44d2");
+
+var FIND_INDEX = 'findIndex';
+var SKIPS_HOLES = true;
+
+// Shouldn't skip holes
+if (FIND_INDEX in []) Array(1)[FIND_INDEX](function () { SKIPS_HOLES = false; });
+
+// `Array.prototype.findIndex` method
+// https://tc39.es/ecma262/#sec-array.prototype.findindex
+$({ target: 'Array', proto: true, forced: SKIPS_HOLES }, {
+  findIndex: function findIndex(callbackfn /* , that = undefined */) {
+    return $findIndex(this, callbackfn, arguments.length > 1 ? arguments[1] : undefined);
+  }
+});
+
+// https://tc39.es/ecma262/#sec-array.prototype-@@unscopables
+addToUnscopables(FIND_INDEX);
+
+
+/***/ }),
+
 /***/ "c770":
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -5162,6 +5334,22 @@ if (!IS_PURE && isCallable(NativePromiseConstructor)) {
     defineBuiltIn(NativePromisePrototype, 'catch', method, { unsafe: true });
   }
 }
+
+
+/***/ }),
+
+/***/ "cca6":
+/***/ (function(module, exports, __webpack_require__) {
+
+var $ = __webpack_require__("23e7");
+var assign = __webpack_require__("60da");
+
+// `Object.assign` method
+// https://tc39.es/ecma262/#sec-object.assign
+// eslint-disable-next-line es-x/no-object-assign -- required for testing
+$({ target: 'Object', stat: true, arity: 2, forced: Object.assign !== assign }, {
+  assign: assign
+});
 
 
 /***/ }),
@@ -7075,36 +7263,32 @@ function _asyncToGenerator(fn) {
     });
   };
 }
-// EXTERNAL MODULE: ./node_modules/core-js/modules/es.array.includes.js
-var es_array_includes = __webpack_require__("caad");
+// CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/classCallCheck.js
 
-// EXTERNAL MODULE: ./node_modules/core-js/modules/es.string.includes.js
-var es_string_includes = __webpack_require__("2532");
+function _classCallCheck(instance, Constructor) {
+  if (!(instance instanceof Constructor)) {
+    throw new TypeError("Cannot call a class as a function");
+  }
+}
+// CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/createClass.js
+function _defineProperties(target, props) {
+  for (var i = 0; i < props.length; i++) {
+    var descriptor = props[i];
+    descriptor.enumerable = descriptor.enumerable || false;
+    descriptor.configurable = true;
+    if ("value" in descriptor) descriptor.writable = true;
+    Object.defineProperty(target, descriptor.key, descriptor);
+  }
+}
 
-// EXTERNAL MODULE: ./node_modules/core-js/modules/es.array.filter.js
-var es_array_filter = __webpack_require__("4de4");
-
-// EXTERNAL MODULE: ./node_modules/core-js/modules/es.regexp.exec.js
-var es_regexp_exec = __webpack_require__("ac1f");
-
-// EXTERNAL MODULE: ./node_modules/core-js/modules/es.string.split.js
-var es_string_split = __webpack_require__("1276");
-
-// EXTERNAL MODULE: ./node_modules/core-js/modules/es.string.replace.js
-var es_string_replace = __webpack_require__("5319");
-
-// EXTERNAL MODULE: ./node_modules/core-js/modules/es.array.map.js
-var es_array_map = __webpack_require__("d81d");
-
-// EXTERNAL MODULE: ./node_modules/core-js/modules/es.object.keys.js
-var es_object_keys = __webpack_require__("b64b");
-
-// EXTERNAL MODULE: ./node_modules/core-js/modules/es.object.get-own-property-descriptor.js
-var es_object_get_own_property_descriptor = __webpack_require__("e439");
-
-// EXTERNAL MODULE: ./node_modules/core-js/modules/es.object.get-own-property-descriptors.js
-var es_object_get_own_property_descriptors = __webpack_require__("dbb4");
-
+function _createClass(Constructor, protoProps, staticProps) {
+  if (protoProps) _defineProperties(Constructor.prototype, protoProps);
+  if (staticProps) _defineProperties(Constructor, staticProps);
+  Object.defineProperty(Constructor, "prototype", {
+    writable: false
+  });
+  return Constructor;
+}
 // CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/defineProperty.js
 function _defineProperty(obj, key, value) {
   if (key in obj) {
@@ -7120,6 +7304,497 @@ function _defineProperty(obj, key, value) {
 
   return obj;
 }
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.object.assign.js
+var es_object_assign = __webpack_require__("cca6");
+
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.object.keys.js
+var es_object_keys = __webpack_require__("b64b");
+
+// CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/arrayLikeToArray.js
+function _arrayLikeToArray(arr, len) {
+  if (len == null || len > arr.length) len = arr.length;
+
+  for (var i = 0, arr2 = new Array(len); i < len; i++) {
+    arr2[i] = arr[i];
+  }
+
+  return arr2;
+}
+// CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/arrayWithoutHoles.js
+
+function _arrayWithoutHoles(arr) {
+  if (Array.isArray(arr)) return _arrayLikeToArray(arr);
+}
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.array.from.js
+var es_array_from = __webpack_require__("a630");
+
+// CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/iterableToArray.js
+
+
+
+
+
+
+
+
+function _iterableToArray(iter) {
+  if (typeof Symbol !== "undefined" && iter[Symbol.iterator] != null || iter["@@iterator"] != null) return Array.from(iter);
+}
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.regexp.exec.js
+var es_regexp_exec = __webpack_require__("ac1f");
+
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.regexp.test.js
+var es_regexp_test = __webpack_require__("00b4");
+
+// CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/unsupportedIterableToArray.js
+
+
+
+
+
+
+
+
+function _unsupportedIterableToArray(o, minLen) {
+  if (!o) return;
+  if (typeof o === "string") return _arrayLikeToArray(o, minLen);
+  var n = Object.prototype.toString.call(o).slice(8, -1);
+  if (n === "Object" && o.constructor) n = o.constructor.name;
+  if (n === "Map" || n === "Set") return Array.from(o);
+  if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen);
+}
+// CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/nonIterableSpread.js
+
+function _nonIterableSpread() {
+  throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
+}
+// CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/toConsumableArray.js
+
+
+
+
+function _toConsumableArray(arr) {
+  return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _unsupportedIterableToArray(arr) || _nonIterableSpread();
+}
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.array.concat.js
+var es_array_concat = __webpack_require__("99af");
+
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.array.map.js
+var es_array_map = __webpack_require__("d81d");
+
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.array.find.js
+var es_array_find = __webpack_require__("7db0");
+
+// CONCATENATED MODULE: ./src/lib/chain-syncer/add-events.js
+
+
+
+
+
+
+
+
+var addEvents = /*#__PURE__*/function () {
+  var _ref = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee(scans) {
+    var _this = this;
+
+    var merged_events, used_blocks, used_txs, process_events;
+    return _regeneratorRuntime().wrap(function _callee$(_context) {
+      while (1) {
+        switch (_context.prev = _context.next) {
+          case 0:
+            merged_events = scans.reduce(function (acc, n) {
+              return [].concat(_toConsumableArray(acc), _toConsumableArray(n.events));
+            }, []);
+            _context.next = 3;
+            return this._loadUsedBlocks(merged_events);
+
+          case 3:
+            used_blocks = _context.sent;
+            _context.next = 6;
+            return this._loadUsedTxs(merged_events);
+
+          case 6:
+            used_txs = _context.sent;
+            process_events = scans.map(function (item) {
+              return item.events.map(function (event) {
+                return _this.parseEvent(item.contract_name, event, used_blocks.find(function (n) {
+                  return n.number === event.blockNumber;
+                }), used_txs.find(function (n) {
+                  return n.hash === event.transactionHash;
+                }));
+              });
+            }).reduce(function (acc, n) {
+              return [].concat(_toConsumableArray(acc), _toConsumableArray(n));
+            }, []);
+            _context.next = 10;
+            return this.adapter.saveEvents(process_events, Object.keys(this.subscribers));
+
+          case 10:
+            return _context.abrupt("return", process_events);
+
+          case 11:
+          case "end":
+            return _context.stop();
+        }
+      }
+    }, _callee, this);
+  }));
+
+  return function addEvents(_x) {
+    return _ref.apply(this, arguments);
+  };
+}();
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.array.includes.js
+var es_array_includes = __webpack_require__("caad");
+
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.string.includes.js
+var es_string_includes = __webpack_require__("2532");
+
+// CONCATENATED MODULE: ./src/lib/chain-syncer/add-listener.js
+
+
+
+
+
+var addListener = /*#__PURE__*/function () {
+  var _ref = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee(event, listener) {
+    var _this$_parseListenerN, contract_name, event_name;
+
+    return _regeneratorRuntime().wrap(function _callee$(_context) {
+      while (1) {
+        switch (_context.prev = _context.next) {
+          case 0:
+            if (!(this.mode !== 'mono')) {
+              _context.next = 2;
+              break;
+            }
+
+            throw new Error('Inline listeners are only available in mono mode');
+
+          case 2:
+            if (!this._is_started) {
+              _context.next = 4;
+              break;
+            }
+
+            throw new Error('Unfortunately, you cannot add new listeners after module started');
+
+          case 4:
+            _this$_parseListenerN = this._parseListenerName(event), contract_name = _this$_parseListenerN.contract_name, event_name = _this$_parseListenerN.event_name;
+
+            if (!this.used_contracts.includes(contract_name)) {
+              this.used_contracts.push(contract_name);
+            }
+
+            this.listeners[event] = {
+              full_event: event,
+              listener: listener,
+              contract_name: contract_name,
+              event_name: event_name
+            };
+
+          case 7:
+          case "end":
+            return _context.stop();
+        }
+      }
+    }, _callee, this);
+  }));
+
+  return function addListener(_x, _x2) {
+    return _ref.apply(this, arguments);
+  };
+}();
+// CONCATENATED MODULE: ./src/lib/chain-syncer/update-subscriber.js
+
+
+var update_subscriber_updateSubscriber = /*#__PURE__*/function () {
+  var _ref = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee(subscriber, events) {
+    var _yield$this$adapter$u, events_added, events_removed;
+
+    return _regeneratorRuntime().wrap(function _callee$(_context) {
+      while (1) {
+        switch (_context.prev = _context.next) {
+          case 0:
+            _context.next = 2;
+            return this.adapter.updateSubscriber(subscriber, events);
+
+          case 2:
+            _yield$this$adapter$u = _context.sent;
+            events_added = _yield$this$adapter$u.events_added;
+            events_removed = _yield$this$adapter$u.events_removed;
+
+            if (!events_added.length) {
+              _context.next = 8;
+              break;
+            }
+
+            _context.next = 8;
+            return this.adapter.addUnprocessedEventsToQueue(subscriber, events_added);
+
+          case 8:
+            if (!events_removed.length) {
+              _context.next = 11;
+              break;
+            }
+
+            _context.next = 11;
+            return this.adapter.removeQueue(subscriber, events_added);
+
+          case 11:
+            _context.next = 13;
+            return this.syncSubscribers();
+
+          case 13:
+          case "end":
+            return _context.stop();
+        }
+      }
+    }, _callee, this);
+  }));
+
+  return function updateSubscriber(_x, _x2) {
+    return _ref.apply(this, arguments);
+  };
+}();
+// CONCATENATED MODULE: ./src/lib/chain-syncer/get-contract-events.js
+
+
+var getContractEvents = /*#__PURE__*/function () {
+  var _ref = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee(contract_name, max_block) {
+    var opts,
+        from_block,
+        contract,
+        transaction,
+        to_block,
+        force_rescan_till,
+        res,
+        _args = arguments;
+    return _regeneratorRuntime().wrap(function _callee$(_context) {
+      while (1) {
+        switch (_context.prev = _context.next) {
+          case 0:
+            opts = _args.length > 2 && _args[2] !== undefined ? _args[2] : {};
+            _context.next = 3;
+            return this.adapter.getLatestScannedBlockNumber(contract_name);
+
+          case 3:
+            from_block = _context.sent;
+            _context.next = 6;
+            return this.contractsGetter(contract_name);
+
+          case 6:
+            contract = _context.sent;
+
+            if (from_block) {
+              _context.next = 22;
+              break;
+            }
+
+            if (contract.deployed_transaction_hash) {
+              _context.next = 11;
+              break;
+            }
+
+            console.error(contract_name, 'has no deploy tx hash', contract.deployed_transaction_hash);
+            return _context.abrupt("return");
+
+          case 11:
+            _context.prev = 11;
+            _context.next = 14;
+            return this.ethers_provider.getTransaction(contract.deployed_transaction_hash);
+
+          case 14:
+            transaction = _context.sent;
+            _context.next = 21;
+            break;
+
+          case 17:
+            _context.prev = 17;
+            _context.t0 = _context["catch"](11);
+            console.error('There\'s a problem fetching contract\'s deploy transaction. TX:', contract.deployed_transaction_hash);
+            return _context.abrupt("return");
+
+          case 21:
+            from_block = transaction.blockNumber;
+
+          case 22:
+            to_block = from_block + this.query_block_limit;
+
+            if (to_block > max_block) {
+              to_block = max_block;
+            }
+
+            if (from_block === to_block) {
+              if (from_block < 0) {
+                from_block = 0;
+              }
+            }
+
+            if (!opts.force_rescan_till) {
+              _context.next = 32;
+              break;
+            }
+
+            force_rescan_till = Math.max(0, opts.force_rescan_till);
+
+            if (!(to_block > force_rescan_till)) {
+              _context.next = 31;
+              break;
+            }
+
+            from_block = force_rescan_till;
+            _context.next = 32;
+            break;
+
+          case 31:
+            return _context.abrupt("return");
+
+          case 32:
+            _context.next = 34;
+            return this.scanContractBlocks(contract, contract_name, from_block, to_block);
+
+          case 34:
+            res = _context.sent;
+            return _context.abrupt("return", res);
+
+          case 36:
+          case "end":
+            return _context.stop();
+        }
+      }
+    }, _callee, this, [[11, 17]]);
+  }));
+
+  return function getContractEvents(_x, _x2) {
+    return _ref.apply(this, arguments);
+  };
+}();
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.array.filter.js
+var es_array_filter = __webpack_require__("4de4");
+
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.string.split.js
+var es_string_split = __webpack_require__("1276");
+
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.string.replace.js
+var es_string_replace = __webpack_require__("5319");
+
+// CONCATENATED MODULE: ./src/lib/chain-syncer/helpers.js
+
+
+
+
+
+
+
+
+
+
+
+
+
+var helpers = {
+  _uniq: function _uniq(a) {
+    var seen = {};
+    return a.filter(function (item) {
+      return seen.hasOwnProperty(item) ? false : seen[item] = true;
+    });
+  },
+  _parseListenerName: function _parseListenerName(event) {
+    var exploded = event.replace(/\#.*$/, '').split('.');
+    var contract_name = exploded[0];
+    var event_name = exploded[1];
+
+    if (!(contract_name || '').length || !(event_name || '').length) {
+      throw new Error('Invalid listener format! Must be ContractName.EventName');
+    }
+
+    return {
+      contract_name: contract_name,
+      event_name: event_name
+    };
+  },
+  _parseEventId: function _parseEventId(event) {
+    return event.transactionHash + '_' + event.logIndex;
+  },
+  _loadUsedBlocks: function _loadUsedBlocks(events) {
+    var _this = this;
+
+    return _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee() {
+      var used_blocks;
+      return _regeneratorRuntime().wrap(function _callee$(_context) {
+        while (1) {
+          switch (_context.prev = _context.next) {
+            case 0:
+              used_blocks = _this._uniq(events.map(function (n) {
+                return n.blockNumber;
+              }));
+              _context.next = 3;
+              return Promise.all(used_blocks.map(function (n) {
+                return _this.ethers_provider.getBlock(n).catch(function (err) {
+                  console.error("getBlock error in ".concat(n, " block"));
+                  return null;
+                });
+              }));
+
+            case 3:
+              used_blocks = _context.sent;
+              used_blocks = used_blocks.filter(function (n) {
+                return n;
+              });
+              return _context.abrupt("return", used_blocks);
+
+            case 6:
+            case "end":
+              return _context.stop();
+          }
+        }
+      }, _callee);
+    }))();
+  },
+  _loadUsedTxs: function _loadUsedTxs(events) {
+    var _this2 = this;
+
+    return _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee2() {
+      var used_txs;
+      return _regeneratorRuntime().wrap(function _callee2$(_context2) {
+        while (1) {
+          switch (_context2.prev = _context2.next) {
+            case 0:
+              used_txs = _this2._uniq(events.map(function (n) {
+                return n.transactionHash;
+              }));
+              _context2.next = 3;
+              return Promise.all(used_txs.map(function (n) {
+                return _this2.ethers_provider.getTransaction(n).catch(function (err) {
+                  console.error("getTransaction error in ".concat(n, " tx"));
+                  return null;
+                });
+              }));
+
+            case 3:
+              used_txs = _context2.sent;
+              used_txs = used_txs.filter(function (n) {
+                return n;
+              });
+              return _context2.abrupt("return", used_txs);
+
+            case 6:
+            case "end":
+              return _context2.stop();
+          }
+        }
+      }, _callee2);
+    }))();
+  }
+};
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.object.get-own-property-descriptor.js
+var es_object_get_own_property_descriptor = __webpack_require__("e439");
+
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.object.get-own-property-descriptors.js
+var es_object_get_own_property_descriptors = __webpack_require__("dbb4");
+
 // CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/objectSpread2.js
 
 
@@ -7182,6 +7857,10 @@ var parse_event_parseEvent = function parseEvent(contract_name, event, block, tx
     throw new Error('Event has no tx, trying to fetch again (problem with RPC)');
   }
 
+  if (!block) {
+    throw new Error('Event has no block, trying to fetch again (problem with RPC)');
+  }
+
   var opts = {
     id: this._parseEventId(event),
     contract: contract_name,
@@ -7214,25 +7893,7 @@ var parse_event_parseEvent = function parseEvent(contract_name, event, block, tx
     args: args
   });
 };
-// CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/arrayLikeToArray.js
-function _arrayLikeToArray(arr, len) {
-  if (len == null || len > arr.length) len = arr.length;
-
-  for (var i = 0, arr2 = new Array(len); i < len; i++) {
-    arr2[i] = arr[i];
-  }
-
-  return arr2;
-}
-// CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/arrayWithoutHoles.js
-
-function _arrayWithoutHoles(arr) {
-  if (Array.isArray(arr)) return _arrayLikeToArray(arr);
-}
-// EXTERNAL MODULE: ./node_modules/core-js/modules/es.array.from.js
-var es_array_from = __webpack_require__("a630");
-
-// CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/iterableToArray.js
+// CONCATENATED MODULE: ./src/lib/chain-syncer/process-subscriber-events.js
 
 
 
@@ -7241,94 +7902,193 @@ var es_array_from = __webpack_require__("a630");
 
 
 
-function _iterableToArray(iter) {
-  if (typeof Symbol !== "undefined" && iter[Symbol.iterator] != null || iter["@@iterator"] != null) return Array.from(iter);
-}
-// EXTERNAL MODULE: ./node_modules/core-js/modules/es.regexp.test.js
-var es_regexp_test = __webpack_require__("00b4");
-
-// CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/unsupportedIterableToArray.js
 
 
 
 
+var parseListenerName = function parseListenerName(e) {
+  return "".concat(e.contract, ".").concat(e.event);
+};
 
-
-
-
-function _unsupportedIterableToArray(o, minLen) {
-  if (!o) return;
-  if (typeof o === "string") return _arrayLikeToArray(o, minLen);
-  var n = Object.prototype.toString.call(o).slice(8, -1);
-  if (n === "Object" && o.constructor) n = o.constructor.name;
-  if (n === "Map" || n === "Set") return Array.from(o);
-  if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen);
-}
-// CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/nonIterableSpread.js
-
-function _nonIterableSpread() {
-  throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
-}
-// CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/toConsumableArray.js
-
-
-
-
-function _toConsumableArray(arr) {
-  return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _unsupportedIterableToArray(arr) || _nonIterableSpread();
-}
-// EXTERNAL MODULE: ./node_modules/core-js/modules/es.array.concat.js
-var es_array_concat = __webpack_require__("99af");
-
-// EXTERNAL MODULE: ./node_modules/core-js/modules/es.array.find.js
-var es_array_find = __webpack_require__("7db0");
-
-// CONCATENATED MODULE: ./src/lib/chain-syncer/process-events.js
-
-
-
-
-
-
-
-var processEvents = /*#__PURE__*/function () {
-  var _ref = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee(data) {
+var processSubscriberEvents = /*#__PURE__*/function () {
+  var _ref = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee2(subscriber) {
     var _this = this;
 
-    var merged_events, used_blocks, used_txs, process_events;
+    var events;
+    return _regeneratorRuntime().wrap(function _callee2$(_context2) {
+      while (1) {
+        switch (_context2.prev = _context2.next) {
+          case 0:
+            _context2.next = 2;
+            return this.adapter.selectAllUnprocessedEventsBySubscriber(subscriber);
+
+          case 2:
+            events = _context2.sent;
+            events = events.filter(function (n) {
+              return !!_this.listeners[parseListenerName(n)];
+            });
+            _context2.next = 6;
+            return Promise.all(events.map( /*#__PURE__*/function () {
+              var _ref2 = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee(n) {
+                var event, listener_name, listener, res;
+                return _regeneratorRuntime().wrap(function _callee$(_context) {
+                  while (1) {
+                    switch (_context.prev = _context.next) {
+                      case 0:
+                        event = n;
+                        listener_name = parseListenerName(event);
+                        listener = _this.listeners[listener_name].listener;
+                        _context.prev = 3;
+                        _context.next = 6;
+                        return listener.apply(void 0, _toConsumableArray(event.args).concat([{
+                          block_number: event.block_number,
+                          transaction_hash: event.transaction_hash,
+                          block_timestamp: event.block_timestamp,
+                          global_index: event.global_index,
+                          from_address: event.from_address
+                        }]));
+
+                      case 6:
+                        res = _context.sent;
+
+                        if (!(res === false)) {
+                          _context.next = 10;
+                          break;
+                        }
+
+                        if (_this.verbose) {
+                          console.log('Postponed event', listener_name);
+                        }
+
+                        return _context.abrupt("return");
+
+                      case 10:
+                        _context.next = 16;
+                        break;
+
+                      case 12:
+                        _context.prev = 12;
+                        _context.t0 = _context["catch"](3);
+                        console.error('Error during event processing', listener_name, _context.t0);
+                        return _context.abrupt("return");
+
+                      case 16:
+                        _context.prev = 16;
+                        _context.next = 19;
+                        return _this.adapter.setEventProcessedForSubscriber(event.id, subscriber);
+
+                      case 19:
+                        _context.next = 24;
+                        break;
+
+                      case 21:
+                        _context.prev = 21;
+                        _context.t1 = _context["catch"](16);
+                        console.error('Error during event stream state setter', _context.t1);
+
+                      case 24:
+                      case "end":
+                        return _context.stop();
+                    }
+                  }
+                }, _callee, null, [[3, 12], [16, 21]]);
+              }));
+
+              return function (_x2) {
+                return _ref2.apply(this, arguments);
+              };
+            }()));
+
+          case 6:
+          case "end":
+            return _context2.stop();
+        }
+      }
+    }, _callee2, this);
+  }));
+
+  return function processSubscriberEvents(_x) {
+    return _ref.apply(this, arguments);
+  };
+}();
+// CONCATENATED MODULE: ./src/lib/chain-syncer/processing-tick.js
+
+
+
+
+
+
+
+var processingTick = /*#__PURE__*/function () {
+  var _ref = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee() {
+    var _this = this;
+
+    var proms, key;
     return _regeneratorRuntime().wrap(function _callee$(_context) {
       while (1) {
         switch (_context.prev = _context.next) {
           case 0:
-            merged_events = data.reduce(function (acc, n) {
-              return [].concat(_toConsumableArray(acc), _toConsumableArray(n.events));
-            }, []);
-            _context.next = 3;
-            return this._loadUsedBlocks(merged_events);
+            proms = [];
 
-          case 3:
-            used_blocks = _context.sent;
+            for (key in this.subscribers) {
+              proms.push(this.processSubscriberEvents(key).catch(function (err) {
+                return console.error(err);
+              }));
+            }
+
+            _context.next = 4;
+            return Promise.all(proms);
+
+          case 4:
+            this._processing_timeout = setTimeout(function () {
+              return _this.processingTick();
+            }, this.tick_interval);
+
+          case 5:
+          case "end":
+            return _context.stop();
+        }
+      }
+    }, _callee, this);
+  }));
+
+  return function processingTick() {
+    return _ref.apply(this, arguments);
+  };
+}();
+// CONCATENATED MODULE: ./src/lib/chain-syncer/safe-rescan.js
+
+
+var safeRescan = /*#__PURE__*/function () {
+  var _ref = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee(max_block) {
+    var force_rescan_till, _yield$this$scanContr, scans, events;
+
+    return _regeneratorRuntime().wrap(function _callee$(_context) {
+      while (1) {
+        switch (_context.prev = _context.next) {
+          case 0:
+            if (!(max_block < this._next_safe_at)) {
+              _context.next = 2;
+              break;
+            }
+
+            return _context.abrupt("return");
+
+          case 2:
+            max_block = max_block - 1; // we dont need the latest
+
+            force_rescan_till = max_block - this.safe_rescan_every_n_block * 2;
             _context.next = 6;
-            return this._loadUsedTxs(merged_events);
+            return this.scanContracts(max_block, {
+              force_rescan_till: force_rescan_till
+            });
 
           case 6:
-            used_txs = _context.sent;
-            process_events = data.map(function (item) {
-              return item.events.map(function (event) {
-                return _this.parseEvent(item.contract_name, event, used_blocks.find(function (n) {
-                  return n.number === event.blockNumber;
-                }), used_txs.find(function (n) {
-                  return n.hash === event.transactionHash;
-                }));
-              });
-            }).reduce(function (acc, n) {
-              return [].concat(_toConsumableArray(acc), _toConsumableArray(n));
-            }, []);
-            _context.next = 10;
-            return this.adapter.saveEvents(process_events);
-
-          case 10:
-            return _context.abrupt("return", process_events);
+            _yield$this$scanContr = _context.sent;
+            scans = _yield$this$scanContr.scans;
+            events = _yield$this$scanContr.events;
+            this._next_safe_at = max_block + this.safe_rescan_every_n_block;
+            console.log('Safe rescan ...', events.length, 'events added. Next rescan at', this._next_safe_at);
 
           case 11:
           case "end":
@@ -7338,11 +8098,11 @@ var processEvents = /*#__PURE__*/function () {
     }, _callee, this);
   }));
 
-  return function processEvents(_x) {
+  return function safeRescan(_x) {
     return _ref.apply(this, arguments);
   };
 }();
-// CONCATENATED MODULE: ./src/lib/chain-syncer/process-stream.js
+// CONCATENATED MODULE: ./src/lib/chain-syncer/save-latest-blocks.js
 
 
 
@@ -7351,198 +8111,28 @@ var processEvents = /*#__PURE__*/function () {
 
 
 
-
-
-var processStream = /*#__PURE__*/function () {
-  var _ref = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee2(key) {
+var saveLatestBlocks = /*#__PURE__*/function () {
+  var _ref = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee(scans) {
     var _this = this;
 
-    var _this$listeners$key, listener, contract_name, event_name, event_stream, full_event, events, start, end;
-
-    return _regeneratorRuntime().wrap(function _callee2$(_context2) {
-      while (1) {
-        switch (_context2.prev = _context2.next) {
-          case 0:
-            _this$listeners$key = this.listeners[key], listener = _this$listeners$key.listener, contract_name = _this$listeners$key.contract_name, event_name = _this$listeners$key.event_name, event_stream = _this$listeners$key.event_stream, full_event = _this$listeners$key.full_event; // get all unprocessed events by contract and event name
-
-            _context2.next = 3;
-            return this.adapter.selectAllUnprocessedEvents(contract_name, event_name, event_stream, this.query_unprocessed_events_limit);
-
-          case 3:
-            events = _context2.sent;
-            start = +new Date(); // log start timestamp
-
-            _context2.next = 7;
-            return Promise.all(events.map( /*#__PURE__*/function () {
-              var _ref2 = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee(n) {
-                var event, res;
-                return _regeneratorRuntime().wrap(function _callee$(_context) {
-                  while (1) {
-                    switch (_context.prev = _context.next) {
-                      case 0:
-                        event = n;
-                        _context.prev = 1;
-                        _context.next = 4;
-                        return listener.apply(void 0, _toConsumableArray(event.args).concat([{
-                          block_number: event.block_number,
-                          transaction_hash: event.transaction_hash,
-                          block_timestamp: event.block_timestamp,
-                          global_index: event.global_index,
-                          from_address: event.from_address
-                        }]));
-
-                      case 4:
-                        res = _context.sent;
-
-                        if (!(res === false)) {
-                          _context.next = 8;
-                          break;
-                        }
-
-                        if (_this.verbose) {
-                          console.log('Postponed event', full_event);
-                        }
-
-                        return _context.abrupt("return");
-
-                      case 8:
-                        _context.next = 14;
-                        break;
-
-                      case 10:
-                        _context.prev = 10;
-                        _context.t0 = _context["catch"](1);
-                        console.error('Error during stream processing', full_event, _context.t0);
-                        return _context.abrupt("return");
-
-                      case 14:
-                        _context.prev = 14;
-                        _context.next = 17;
-                        return _this.adapter.setEventStreamProcessed(event.id, event_stream);
-
-                      case 17:
-                        _context.next = 22;
-                        break;
-
-                      case 19:
-                        _context.prev = 19;
-                        _context.t1 = _context["catch"](14);
-                        console.error('Error during event stream state setter', _context.t1);
-
-                      case 22:
-                      case "end":
-                        return _context.stop();
-                    }
-                  }
-                }, _callee, null, [[1, 10], [14, 19]]);
-              }));
-
-              return function (_x2) {
-                return _ref2.apply(this, arguments);
-              };
-            }()));
-
-          case 7:
-            end = +new Date(); // log end timestamp
-            // if(end - start > 7000) {
-            //   console.warn('Unoptimized stream detected', key, new Date());
-            // }
-
-          case 8:
-          case "end":
-            return _context2.stop();
-        }
-      }
-    }, _callee2, this);
-  }));
-
-  return function processStream(_x) {
-    return _ref.apply(this, arguments);
-  };
-}();
-// CONCATENATED MODULE: ./src/lib/chain-syncer/get-contract-events.js
-
-
-var getContractEvents = /*#__PURE__*/function () {
-  var _ref = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee(contract_name, max_block) {
-    var from_block, contract, transaction, to_block, res;
     return _regeneratorRuntime().wrap(function _callee$(_context) {
       while (1) {
         switch (_context.prev = _context.next) {
           case 0:
             _context.next = 2;
-            return this.adapter.getLatestUnprocessedBlockNumber(contract_name);
+            return Promise.all(scans.map(function (n) {
+              return _this.adapter.saveLatestScannedBlockNumber(n.contract_name, n.block);
+            }));
 
           case 2:
-            from_block = _context.sent;
-            _context.next = 5;
-            return this.contractsGetter(contract_name);
-
-          case 5:
-            contract = _context.sent;
-
-            if (from_block) {
-              _context.next = 21;
-              break;
-            }
-
-            if (contract.deployed_transaction_hash) {
-              _context.next = 10;
-              break;
-            }
-
-            console.error(contract_name, 'has no deploy tx hash', contract.deployed_transaction_hash);
-            return _context.abrupt("return");
-
-          case 10:
-            _context.prev = 10;
-            _context.next = 13;
-            return this.ethers_provider.getTransaction(contract.deployed_transaction_hash);
-
-          case 13:
-            transaction = _context.sent;
-            _context.next = 20;
-            break;
-
-          case 16:
-            _context.prev = 16;
-            _context.t0 = _context["catch"](10);
-            console.error('There\'s a problem fetching contract\'s deploy transaction. TX:', contract.deployed_transaction_hash);
-            return _context.abrupt("return");
-
-          case 20:
-            from_block = transaction.blockNumber;
-
-          case 21:
-            to_block = from_block + this.query_block_limit;
-
-            if (to_block > max_block) {
-              to_block = max_block;
-            }
-
-            if (from_block === to_block) {
-              // for local env
-              if (from_block < 0) {
-                from_block = 0;
-              }
-            }
-
-            _context.next = 26;
-            return this.scanContractBlocks(contract, contract_name, from_block, to_block);
-
-          case 26:
-            res = _context.sent;
-            return _context.abrupt("return", res);
-
-          case 28:
           case "end":
             return _context.stop();
         }
       }
-    }, _callee, this, [[10, 16]]);
+    }, _callee);
   }));
 
-  return function getContractEvents(_x, _x2) {
+  return function saveLatestBlocks(_x) {
     return _ref.apply(this, arguments);
   };
 }();
@@ -7558,27 +8148,33 @@ var scanContractBlocks = /*#__PURE__*/function () {
   var _ref = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee(contract, contract_name, from_block, to_block) {
     var _this = this;
 
-    var events, event_ids;
+    var ethers_provider, events, event_ids;
     return _regeneratorRuntime().wrap(function _callee$(_context) {
       while (1) {
         switch (_context.prev = _context.next) {
           case 0:
-            _context.next = 2;
-            return contract.inst.queryFilter({}, from_block, to_block);
+            if (to_block - from_block > 60) {
+              ethers_provider = this.ethers_provider;
+            } else {
+              ethers_provider = this.archive_ethers_provider;
+            }
 
-          case 2:
+            _context.next = 3;
+            return contract.inst.connect(ethers_provider).queryFilter({}, from_block, to_block);
+
+          case 3:
             events = _context.sent;
             events = events.filter(function (n) {
               var event = n; // if unknown events (not declared in contract ABI) - just skip
 
               return event.event && event.args; // TODO: filter with streams
             });
-            _context.next = 6;
+            _context.next = 7;
             return this.adapter.filterExistingEvents(events.map(function (n) {
               return _this._parseEventId(n);
             }));
 
-          case 6:
+          case 7:
             event_ids = _context.sent;
             events = events.filter(function (n) {
               var id = _this._parseEventId(n);
@@ -7591,7 +8187,7 @@ var scanContractBlocks = /*#__PURE__*/function () {
               block: to_block
             });
 
-          case 9:
+          case 10:
           case "end":
             return _context.stop();
         }
@@ -7600,6 +8196,212 @@ var scanContractBlocks = /*#__PURE__*/function () {
   }));
 
   return function scanContractBlocks(_x, _x2, _x3, _x4) {
+    return _ref.apply(this, arguments);
+  };
+}();
+// CONCATENATED MODULE: ./src/lib/chain-syncer/scan-contracts.js
+
+
+
+
+
+
+
+
+
+
+var scanContracts = /*#__PURE__*/function () {
+  var _ref = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee(max_block) {
+    var _this = this;
+
+    var opts,
+        proms,
+        _contracts,
+        _loop,
+        i,
+        scans,
+        events,
+        _args = arguments;
+
+    return _regeneratorRuntime().wrap(function _callee$(_context) {
+      while (1) {
+        switch (_context.prev = _context.next) {
+          case 0:
+            opts = _args.length > 1 && _args[1] !== undefined ? _args[1] : {};
+            proms = [];
+            _contracts = this.used_contracts.filter(function (n) {
+              return !_this.ignore_contracts.includes(n);
+            });
+
+            _loop = function _loop(i) {
+              var contract_name = _contracts[i];
+
+              var prom = _this.getContractEvents(contract_name, max_block, opts).catch(function (err) {
+                console.error('Error in gethering events for contract', "".concat(contract_name, ":"), err.message);
+                return null;
+              });
+
+              proms.push(prom);
+            };
+
+            for (i in _contracts) {
+              _loop(i);
+            }
+
+            scans = [];
+            events = [];
+
+            if (!proms.length) {
+              _context.next = 14;
+              break;
+            }
+
+            _context.next = 10;
+            return Promise.all(proms).then(function (data) {
+              return data.filter(function (n) {
+                return n;
+              });
+            });
+
+          case 10:
+            scans = _context.sent;
+            _context.next = 13;
+            return this.addEvents(scans);
+
+          case 13:
+            events = _context.sent;
+
+          case 14:
+            return _context.abrupt("return", {
+              scans: scans,
+              events: events
+            });
+
+          case 15:
+          case "end":
+            return _context.stop();
+        }
+      }
+    }, _callee, this);
+  }));
+
+  return function scanContracts(_x) {
+    return _ref.apply(this, arguments);
+  };
+}();
+// CONCATENATED MODULE: ./src/lib/chain-syncer/scanner-tick.js
+
+
+var scannerTick = /*#__PURE__*/function () {
+  var _ref = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee() {
+    var _this = this;
+
+    var max_block, _yield$this$scanContr, scans, events;
+
+    return _regeneratorRuntime().wrap(function _callee$(_context) {
+      while (1) {
+        switch (_context.prev = _context.next) {
+          case 0:
+            _context.prev = 0;
+            _context.next = 3;
+            return this.ethers_provider.getBlockNumber();
+
+          case 3:
+            max_block = _context.sent;
+            _context.next = 9;
+            break;
+
+          case 6:
+            _context.prev = 6;
+            _context.t0 = _context["catch"](0);
+            console.error('Error while fetching max_block, will try again anyway:', _context.t0 ? _context.t0.message : 'Unknown error');
+
+          case 9:
+            if (!max_block) {
+              _context.next = 30;
+              break;
+            }
+
+            _context.prev = 10;
+            _context.next = 13;
+            return this.scanContracts(max_block);
+
+          case 13:
+            _yield$this$scanContr = _context.sent;
+            scans = _yield$this$scanContr.scans;
+            events = _yield$this$scanContr.events;
+
+            if (scans.length) {
+              _context.next = 20;
+              break;
+            }
+
+            console.log("[MAXBLOCK: ".concat(max_block, "]"), 'No scans executed');
+            _context.next = 25;
+            break;
+
+          case 20:
+            _context.next = 22;
+            return this.saveLatestBlocks(scans);
+
+          case 22:
+            if (this.verbose) {
+              console.log("[MAXBLOCK: ".concat(max_block, "]"), events.length, 'events added');
+            }
+
+            _context.next = 25;
+            return this.safeRescan(max_block);
+
+          case 25:
+            _context.next = 30;
+            break;
+
+          case 27:
+            _context.prev = 27;
+            _context.t1 = _context["catch"](10);
+            console.error('Error in scanner', _context.t1);
+
+          case 30:
+            this._scanner_timeout = setTimeout(function () {
+              return _this.scannerTick();
+            }, this.block_time);
+
+          case 31:
+          case "end":
+            return _context.stop();
+        }
+      }
+    }, _callee, this, [[0, 6], [10, 27]]);
+  }));
+
+  return function scannerTick() {
+    return _ref.apply(this, arguments);
+  };
+}();
+// CONCATENATED MODULE: ./src/lib/chain-syncer/sync-subscribers.js
+
+
+var syncSubscribers = /*#__PURE__*/function () {
+  var _ref = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee() {
+    return _regeneratorRuntime().wrap(function _callee$(_context) {
+      while (1) {
+        switch (_context.prev = _context.next) {
+          case 0:
+            _context.next = 2;
+            return this.adapter.selectAllSubscribers();
+
+          case 2:
+            this.subscribers = _context.sent;
+
+          case 3:
+          case "end":
+            return _context.stop();
+        }
+      }
+    }, _callee, this);
+  }));
+
+  return function syncSubscribers() {
     return _ref.apply(this, arguments);
   };
 }();
@@ -7624,480 +8426,234 @@ var scanContractBlocks = /*#__PURE__*/function () {
 
 
 
-var chain_syncer_ChainSyncer = function ChainSyncer(adapter) {
-  var opts = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
-  var _opts$tick_interval = opts.tick_interval,
-      tick_interval = _opts$tick_interval === void 0 ? 2000 : _opts$tick_interval,
-      _opts$query_block_lim = opts.query_block_limit,
-      query_block_limit = _opts$query_block_lim === void 0 ? 100 : _opts$query_block_lim,
-      _opts$query_unprocess = opts.query_unprocessed_events_limit,
-      query_unprocessed_events_limit = _opts$query_unprocess === void 0 ? 100 : _opts$query_unprocess,
-      block_time = opts.block_time,
-      _opts$mode = opts.mode,
-      mode = _opts$mode === void 0 ? 'universal' : _opts$mode,
-      contractsGetter = opts.contractsGetter,
-      ethers_provider = opts.ethers_provider,
-      _opts$ignore_contract = opts.ignore_contracts,
-      ignore_contracts = _opts$ignore_contract === void 0 ? [] : _opts$ignore_contract,
-      _opts$verbose = opts.verbose,
-      verbose = _opts$verbose === void 0 ? false : _opts$verbose;
 
-  if (!contractsGetter) {
-    throw new Error('contractsGetter is required');
-  }
 
-  if (!ethers_provider) {
-    throw new Error('ethers_provider is required');
-  }
+var chain_syncer_ChainSyncer = /*#__PURE__*/function () {
+  function ChainSyncer(adapter) {
+    var opts = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
 
-  if (!block_time) {
-    throw new Error('block_time is required');
-  }
+    _classCallCheck(this, ChainSyncer);
 
-  this.listeners = {};
-  this._used_contracts = [];
-  this.query_block_limit = query_block_limit;
-  this.block_time = block_time;
-  this.query_unprocessed_events_limit = query_unprocessed_events_limit;
-  this.tick_interval = tick_interval;
-  this.adapter = adapter;
-  this.mode = mode;
-  this.ethers_provider = ethers_provider;
-  this.contractsGetter = contractsGetter;
-  this.ignore_contracts = ignore_contracts;
-  this.verbose = verbose;
-  this.processStream = processStream.bind(this);
-  this.parseEvent = parse_event_parseEvent.bind(this);
-  this.getContractEvents = getContractEvents.bind(this);
-  this.scanContractBlocks = scanContractBlocks.bind(this);
-  this.processEvents = processEvents.bind(this);
+    _defineProperty(this, "listeners", []);
 
-  this.on = /*#__PURE__*/function () {
-    var _ref = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee(event, listener) {
-      var _this$_parseListenerN, contract_name, event_name, event_stream;
+    _defineProperty(this, "used_contracts", []);
 
-      return _regeneratorRuntime().wrap(function _callee$(_context) {
-        while (1) {
-          switch (_context.prev = _context.next) {
-            case 0:
-              _this$_parseListenerN = this._parseListenerName(event), contract_name = _this$_parseListenerN.contract_name, event_name = _this$_parseListenerN.event_name, event_stream = _this$_parseListenerN.event_stream;
+    _defineProperty(this, "subscribers", []);
 
-              if (!this._used_contracts.includes(contract_name)) {
-                this._used_contracts.push(contract_name);
-              }
+    _defineProperty(this, "_next_safe_at", 0);
 
-              this.listeners[event] = {
-                full_event: event,
-                listener: listener,
-                contract_name: contract_name,
-                event_name: event_name,
-                event_stream: event_stream
-              };
+    _defineProperty(this, "_is_started", false);
 
-            case 3:
-            case "end":
-              return _context.stop();
-          }
-        }
-      }, _callee, this);
-    }));
+    _defineProperty(this, "syncSubscribers", syncSubscribers);
 
-    return function (_x, _x2) {
-      return _ref.apply(this, arguments);
-    };
-  }();
+    _defineProperty(this, "scannerTick", scannerTick);
 
-  function _uniq(a) {
-    var seen = {};
-    return a.filter(function (item) {
-      return seen.hasOwnProperty(item) ? false : seen[item] = true;
-    });
-  }
+    _defineProperty(this, "processingTick", processingTick);
 
-  this._parseListenerName = function (event) {
-    var exploded = event.replace(/\#.*$/, '').split('.');
-    var contract_name = exploded[0];
-    var event_name = exploded[1];
-    var event_stream = event.split('#')[1];
+    _defineProperty(this, "processSubscriberEvents", processSubscriberEvents);
 
-    if (!(contract_name || '').length || !(event_name || '').length || !(event_stream || '').length) {
-      throw new Error('Invalid listener format! Must be ContractName.EventName#stream-id');
+    _defineProperty(this, "updateSubscriber", update_subscriber_updateSubscriber);
+
+    _defineProperty(this, "addEvents", addEvents);
+
+    _defineProperty(this, "getContractEvents", getContractEvents);
+
+    _defineProperty(this, "saveLatestBlocks", saveLatestBlocks);
+
+    _defineProperty(this, "scanContractBlocks", scanContractBlocks);
+
+    _defineProperty(this, "parseEvent", parse_event_parseEvent);
+
+    _defineProperty(this, "on", addListener);
+
+    _defineProperty(this, "scanContracts", scanContracts);
+
+    _defineProperty(this, "safeRescan", safeRescan);
+
+    var _opts$tick_interval = opts.tick_interval,
+        tick_interval = _opts$tick_interval === void 0 ? 2000 : _opts$tick_interval,
+        _opts$query_block_lim = opts.query_block_limit,
+        query_block_limit = _opts$query_block_lim === void 0 ? 200 : _opts$query_block_lim,
+        _opts$query_unprocess = opts.query_unprocessed_events_limit,
+        query_unprocessed_events_limit = _opts$query_unprocess === void 0 ? 100 : _opts$query_unprocess,
+        _opts$blocks_amount_t = opts.blocks_amount_to_activate_archive_rpc,
+        blocks_amount_to_activate_archive_rpc = _opts$blocks_amount_t === void 0 ? 100 : _opts$blocks_amount_t,
+        _opts$safe_rescan_eve = opts.safe_rescan_every_n_block,
+        safe_rescan_every_n_block = _opts$safe_rescan_eve === void 0 ? 100 : _opts$safe_rescan_eve,
+        _opts$mode = opts.mode,
+        mode = _opts$mode === void 0 ? 'mono' : _opts$mode,
+        _opts$ignore_contract = opts.ignore_contracts,
+        ignore_contracts = _opts$ignore_contract === void 0 ? [] : _opts$ignore_contract,
+        _opts$verbose = opts.verbose,
+        verbose = _opts$verbose === void 0 ? false : _opts$verbose,
+        _opts$contracts = opts.contracts,
+        contracts = _opts$contracts === void 0 ? [] : _opts$contracts,
+        block_time = opts.block_time,
+        contractsGetter = opts.contractsGetter,
+        ethers_provider = opts.ethers_provider,
+        archive_ethers_provider = opts.archive_ethers_provider;
+
+    if (query_block_limit < safe_rescan_every_n_block * 2) {
+      throw new Error('query_block_limit cannot be less than safe_rescan_every_n_block * 2');
     }
 
-    return {
-      contract_name: contract_name,
-      event_name: event_name,
-      event_stream: event_stream
-    };
-  };
-
-  this._parseEventId = function (event) {
-    return event.transactionHash + '_' + event.logIndex;
-  };
-
-  this._loadUsedBlocks = /*#__PURE__*/function () {
-    var _ref2 = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee2(events) {
-      var _this = this;
-
-      var used_blocks;
-      return _regeneratorRuntime().wrap(function _callee2$(_context2) {
-        while (1) {
-          switch (_context2.prev = _context2.next) {
-            case 0:
-              used_blocks = _uniq(events.map(function (n) {
-                return n.blockNumber;
-              }));
-              _context2.next = 3;
-              return Promise.all(used_blocks.map(function (n) {
-                return _this.ethers_provider.getBlock(n).catch(function (err) {
-                  console.error("getBlock error in ".concat(n, " block"));
-                  return null;
-                });
-              }));
-
-            case 3:
-              used_blocks = _context2.sent;
-              used_blocks = used_blocks.filter(function (n) {
-                return n;
-              });
-              return _context2.abrupt("return", used_blocks);
-
-            case 6:
-            case "end":
-              return _context2.stop();
-          }
-        }
-      }, _callee2);
-    }));
-
-    return function (_x3) {
-      return _ref2.apply(this, arguments);
-    };
-  }();
-
-  this._loadUsedTxs = /*#__PURE__*/function () {
-    var _ref3 = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee3(events) {
-      var _this2 = this;
-
-      var used_txs;
-      return _regeneratorRuntime().wrap(function _callee3$(_context3) {
-        while (1) {
-          switch (_context3.prev = _context3.next) {
-            case 0:
-              used_txs = _uniq(events.map(function (n) {
-                return n.transactionHash;
-              }));
-              _context3.next = 3;
-              return Promise.all(used_txs.map(function (n) {
-                return _this2.ethers_provider.getTransaction(n).catch(function (err) {
-                  console.error("getTransaction error in ".concat(n, " tx"));
-                  return null;
-                });
-              }));
-
-            case 3:
-              used_txs = _context3.sent;
-              used_txs = used_txs.filter(function (n) {
-                return n;
-              });
-              return _context3.abrupt("return", used_txs);
-
-            case 6:
-            case "end":
-              return _context3.stop();
-          }
-        }
-      }, _callee3);
-    }));
-
-    return function (_x4) {
-      return _ref3.apply(this, arguments);
-    };
-  }(); // TODO: remove later
-
-
-  this.archiveUnusedData = /*#__PURE__*/_asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee4() {
-    var max_block;
-    return _regeneratorRuntime().wrap(function _callee4$(_context4) {
-      while (1) {
-        switch (_context4.prev = _context4.next) {
-          case 0:
-            _context4.prev = 0;
-            _context4.next = 3;
-            return this.ethers_provider.getBlockNumber();
-
-          case 3:
-            max_block = _context4.sent;
-            _context4.next = 6;
-            return this.adapter.archiveData(max_block - parseInt(3600 * 1000 / this.block_time));
-
-          case 6:
-            _context4.next = 11;
-            break;
-
-          case 8:
-            _context4.prev = 8;
-            _context4.t0 = _context4["catch"](0);
-            console.log('Error while fetching max block in archive operation');
-
-          case 11:
-          case "end":
-            return _context4.stop();
-        }
-      }
-    }, _callee4, this, [[0, 8]]);
-  }));
-
-  this.stop = function () {// TODO
-  };
-
-  this.start = function () {
-    if (this.mode === 'universal' || this.mode === 'events') {
-      this.onSafeTick();
-      this.onEventsTick();
+    if (!contractsGetter) {
+      throw new Error('contractsGetter argument is required');
     }
 
-    if (this.mode === 'universal' || this.mode === 'processing') {
-      this.onProcessingTick();
+    if (!ethers_provider) {
+      throw new Error('ethers_provider argument is required');
     }
-  };
 
-  this.onEventsTick = /*#__PURE__*/_asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee5() {
-    var _this3 = this;
+    if (!block_time) {
+      throw new Error('block_time argument is required');
+    }
 
-    var max_block, proms, _contracts, _loop, i, data, events;
+    if (contracts.length && mode !== 'scanner') {
+      throw new Error('contracts argument are only available in scanner mode');
+    }
 
-    return _regeneratorRuntime().wrap(function _callee5$(_context5) {
-      while (1) {
-        switch (_context5.prev = _context5.next) {
-          case 0:
-            _context5.prev = 0;
-            _context5.next = 3;
-            return this.ethers_provider.getBlockNumber();
+    this.query_block_limit = query_block_limit;
+    this.block_time = block_time;
+    this.query_unprocessed_events_limit = query_unprocessed_events_limit;
+    this.tick_interval = tick_interval;
+    this.adapter = adapter;
+    this.mode = mode;
+    this.ethers_provider = ethers_provider;
+    this.archive_ethers_provider = archive_ethers_provider ? archive_ethers_provider : ethers_provider;
+    this.contractsGetter = contractsGetter;
+    this.ignore_contracts = ignore_contracts;
+    this.verbose = verbose;
+    this.used_contracts = contracts;
+    this.blocks_amount_to_activate_archive_rpc = blocks_amount_to_activate_archive_rpc;
+    this.safe_rescan_every_n_block = safe_rescan_every_n_block;
+    Object.assign(this, helpers);
+  }
 
-          case 3:
-            max_block = _context5.sent;
-            _context5.next = 9;
-            break;
+  _createClass(ChainSyncer, [{
+    key: "start",
+    value: function () {
+      var _start = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee() {
+        return _regeneratorRuntime().wrap(function _callee$(_context) {
+          while (1) {
+            switch (_context.prev = _context.next) {
+              case 0:
+                _context.next = 2;
+                return this.syncSubscribers();
 
-          case 6:
-            _context5.prev = 6;
-            _context5.t0 = _context5["catch"](0);
-            console.error('Error while fetching max_block, will try again anyway:', _context5.t0 ? _context5.t0.message : 'Unknown error');
+              case 2:
+                if (!(this.mode === 'mono')) {
+                  _context.next = 5;
+                  break;
+                }
 
-          case 9:
-            if (!max_block) {
-              _context5.next = 33;
-              break;
+                _context.next = 5;
+                return this.updateSubscriber('mono', Object.keys(this.listeners));
+
+              case 5:
+                if (this.mode === 'mono' || this.mode === 'scanner') {
+                  this.scannerTick();
+                }
+
+                if (this.mode === 'mono') {
+                  this.processingTick();
+                }
+
+                this._is_started = true;
+
+              case 8:
+              case "end":
+                return _context.stop();
             }
+          }
+        }, _callee, this);
+      }));
 
-            _context5.prev = 10;
-            proms = [];
-            _contracts = this._used_contracts.filter(function (n) {
-              return !_this3.ignore_contracts.includes(n);
-            });
-
-            _loop = function _loop(i) {
-              var contract_name = _contracts[i];
-              proms.push(_this3.getContractEvents(contract_name, max_block).catch(function (err) {
-                console.error('Error in gethering events for contract', "".concat(contract_name, ":"), err.message);
-                return null;
-              }));
-            };
-
-            for (i in _contracts) {
-              _loop(i);
-            }
-
-            if (proms.length) {
-              _context5.next = 19;
-              break;
-            }
-
-            console.log("[MAXBLOCK: ".concat(max_block, "]"), 'No contracts to process');
-            _context5.next = 28;
-            break;
-
-          case 19:
-            _context5.next = 21;
-            return Promise.all(proms).then(function (data) {
-              return data.filter(function (n) {
-                return n;
-              });
-            });
-
-          case 21:
-            data = _context5.sent;
-            _context5.next = 24;
-            return this.processEvents(data);
-
-          case 24:
-            events = _context5.sent;
-            _context5.next = 27;
-            return Promise.all(data.map(function (n) {
-              return _this3.adapter.saveLatestUnprocessedBlockNumber(n.contract_name, n.block);
-            }));
-
-          case 27:
-            if (this.verbose) {
-              console.log("[MAXBLOCK: ".concat(max_block, "]"), 'Defualt tick ... ', events.length, 'events added');
-            }
-
-          case 28:
-            _context5.next = 33;
-            break;
-
-          case 30:
-            _context5.prev = 30;
-            _context5.t1 = _context5["catch"](10);
-            console.error('Error in default tick', _context5.t1);
-
-          case 33:
-            this._events_timeout = setTimeout(function () {
-              return _this3.onEventsTick();
-            }, this.block_time / 2);
-
-          case 34:
-          case "end":
-            return _context5.stop();
-        }
+      function start() {
+        return _start.apply(this, arguments);
       }
-    }, _callee5, this, [[0, 6], [10, 30]]);
-  }));
-  this.onProcessingTick = /*#__PURE__*/_asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee6() {
-    var _this4 = this;
 
-    var proms, key;
-    return _regeneratorRuntime().wrap(function _callee6$(_context6) {
-      while (1) {
-        switch (_context6.prev = _context6.next) {
-          case 0:
-            proms = [];
+      return start;
+    }()
+  }]);
 
-            for (key in this.listeners) {
-              proms.push(this.processStream(key).catch(function (err) {
-                return console.error(err);
-              }));
-            }
+  return ChainSyncer;
+}();
+// CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/arrayWithHoles.js
+function _arrayWithHoles(arr) {
+  if (Array.isArray(arr)) return arr;
+}
+// CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/iterableToArrayLimit.js
 
-            _context6.next = 4;
-            return Promise.all(proms);
 
-          case 4:
-            this._processing_timeout = setTimeout(function () {
-              _this4.onProcessingTick();
-            }, this.tick_interval);
 
-          case 5:
-          case "end":
-            return _context6.stop();
-        }
-      }
-    }, _callee6, this);
-  }));
-  this.onSafeTick = /*#__PURE__*/_asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee7() {
-    var _this5 = this;
 
-    var blocks_span, max_block, _proms, _contracts2, i, contract_name, contract, from_block, to_block, data, events;
 
-    return _regeneratorRuntime().wrap(function _callee7$(_context7) {
-      while (1) {
-        switch (_context7.prev = _context7.next) {
-          case 0:
-            blocks_span = 40;
-            this._safe_timeout = setTimeout(function () {
-              _this5.onSafeTick();
-            }, this.block_time * blocks_span);
-            _context7.prev = 2;
-            _context7.next = 5;
-            return this.ethers_provider.getBlockNumber();
 
-          case 5:
-            max_block = _context7.sent;
-            _context7.next = 11;
-            break;
 
-          case 8:
-            _context7.prev = 8;
-            _context7.t0 = _context7["catch"](2);
-            console.error('Error while fetching max_block, will try again anyway.', _context7.t0.message);
+function _iterableToArrayLimit(arr, i) {
+  var _i = arr == null ? null : typeof Symbol !== "undefined" && arr[Symbol.iterator] || arr["@@iterator"];
 
-          case 11:
-            if (!max_block) {
-              _context7.next = 39;
-              break;
-            }
+  if (_i == null) return;
+  var _arr = [];
+  var _n = true;
+  var _d = false;
 
-            _context7.prev = 12;
-            _proms = [];
-            _contracts2 = this._used_contracts.filter(function (n) {
-              return !_this5.ignore_contracts.includes(n);
-            });
-            _context7.t1 = _regeneratorRuntime().keys(_contracts2);
+  var _s, _e;
 
-          case 16:
-            if ((_context7.t2 = _context7.t1()).done) {
-              _context7.next = 27;
-              break;
-            }
+  try {
+    for (_i = _i.call(arr); !(_n = (_s = _i.next()).done); _n = true) {
+      _arr.push(_s.value);
 
-            i = _context7.t2.value;
-            contract_name = _contracts2[i];
-            _context7.next = 21;
-            return this.contractsGetter(contract_name);
+      if (i && _arr.length === i) break;
+    }
+  } catch (err) {
+    _d = true;
+    _e = err;
+  } finally {
+    try {
+      if (!_n && _i["return"] != null) _i["return"]();
+    } finally {
+      if (_d) throw _e;
+    }
+  }
 
-          case 21:
-            contract = _context7.sent;
-            from_block = max_block - blocks_span * 2;
-            to_block = max_block;
+  return _arr;
+}
+// CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/nonIterableRest.js
 
-            _proms.push(this.scanContractBlocks(contract, contract_name, from_block, to_block).catch(function (err) {
-              console.error('Error in gethering events for contract:', err.message);
-              return null;
-            }));
+function _nonIterableRest() {
+  throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
+}
+// CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/slicedToArray.js
 
-            _context7.next = 16;
-            break;
 
-          case 27:
-            _context7.next = 29;
-            return Promise.all(_proms).then(function (data) {
-              return data.filter(function (n) {
-                return n;
-              });
-            });
 
-          case 29:
-            data = _context7.sent;
-            _context7.next = 32;
-            return this.processEvents(data);
 
-          case 32:
-            events = _context7.sent;
+function _slicedToArray(arr, i) {
+  return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest();
+}
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.array.find-index.js
+var es_array_find_index = __webpack_require__("c740");
 
-            if (this.verbose) {
-              console.log('Safe tick ...', events.length, 'events added');
-            }
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.array.splice.js
+var es_array_splice = __webpack_require__("a434");
 
-            _context7.next = 39;
-            break;
-
-          case 36:
-            _context7.prev = 36;
-            _context7.t3 = _context7["catch"](12);
-            console.error('Error in safe tick', _context7.t3);
-
-          case 39:
-          case "end":
-            return _context7.stop();
-        }
-      }
-    }, _callee7, this, [[2, 8], [12, 36]]);
-  }));
-};
 // EXTERNAL MODULE: ./node_modules/core-js/modules/es.array.sort.js
 var es_array_sort = __webpack_require__("4e82");
 
+// CONCATENATED MODULE: ./src/lib/in-memory-adapter/QueueEvent.js
+
+
+var QueueEvent_QueueEvent = /*#__PURE__*/_createClass(function QueueEvent(event, subscriber) {
+  _classCallCheck(this, QueueEvent);
+
+  this.id = event.id + '_' + subscriber;
+  this.event_id = event.id;
+  this.event = event.event;
+  this.contract = event.contract;
+  this.subscriber = subscriber;
+});
 // CONCATENATED MODULE: ./src/lib/in-memory-adapter/index.js
 
 
@@ -8107,82 +8663,452 @@ var es_array_sort = __webpack_require__("4e82");
 
 
 
-var in_memory_adapter_InMemoryAdapter = function InMemoryAdapter() {
-  this.latest_blocks = {};
-  this.events = [];
 
-  this.getLatestUnprocessedBlockNumber = function (contract_name) {
-    var item = this.latest_blocks[contract_name];
 
-    if (item) {
-      return item;
-    }
 
-    return 0;
-  };
 
-  this.saveLatestUnprocessedBlockNumber = function (contract_name, block_number) {
-    this.latest_blocks[contract_name] = block_number;
-  };
 
-  this.selectAllUnprocessedEvents = function (contract, event, stream, limit) {
-    var res = this.events.filter(function (n) {
-      return n.contract === contract && n.event === event && !n.processed_streams.includes(stream);
-    });
-    res.sort(function (a, b) {
-      return a.block_number - b.block_number;
-    });
-    return res;
-  };
 
-  this.setEventStreamProcessed = function (id, stream) {
-    var item = this.events.find(function (n) {
-      return n.id === id;
-    });
 
-    if (item) {
-      item.processed_streams.push(stream);
-    }
-  };
 
-  this.filterExistingEvents = function (ids) {
-    var exist_ids = this.events.filter(function (n) {
-      return ids.includes(n.id);
-    }).map(function (n) {
-      return n.id;
-    });
-    ids = ids.filter(function (n) {
-      return !exist_ids.includes(n);
-    });
-    return ids;
-  };
 
-  this.archiveData = function () {// TODO
 
-    var edge_block = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0;
-  };
 
-  this.saveEvents = function (objects) {
-    var _this$events;
 
-    objects = objects.map(function (n) {
-      n.processed_streams = [];
 
-      if (!n.args) {
-        n.args = [];
+var in_memory_adapter_InMemoryAdapter = /*#__PURE__*/function () {
+  function InMemoryAdapter() {
+    _classCallCheck(this, InMemoryAdapter);
+
+    _defineProperty(this, "latest_blocks", {});
+
+    _defineProperty(this, "events", []);
+
+    _defineProperty(this, "events_queue", []);
+
+    _defineProperty(this, "subscribers", {});
+  }
+  /**
+   * 
+   * @param {string} contract_name 
+   * @returns 
+   */
+
+
+  _createClass(InMemoryAdapter, [{
+    key: "getLatestScannedBlockNumber",
+    value: function () {
+      var _getLatestScannedBlockNumber = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee(contract_name) {
+        var item;
+        return _regeneratorRuntime().wrap(function _callee$(_context) {
+          while (1) {
+            switch (_context.prev = _context.next) {
+              case 0:
+                item = this.latest_blocks[contract_name];
+
+                if (!item) {
+                  _context.next = 3;
+                  break;
+                }
+
+                return _context.abrupt("return", item);
+
+              case 3:
+                return _context.abrupt("return", 0);
+
+              case 4:
+              case "end":
+                return _context.stop();
+            }
+          }
+        }, _callee, this);
+      }));
+
+      function getLatestScannedBlockNumber(_x) {
+        return _getLatestScannedBlockNumber.apply(this, arguments);
       }
 
-      return n;
-    });
-    var non_exist_ids = this.filterExistingEvents(objects.map(function (n) {
-      return n.id;
-    }));
+      return getLatestScannedBlockNumber;
+    }()
+    /**
+     * 
+     * @param {string} subscriber 
+     * @param {Array<string>} events 
+     */
 
-    (_this$events = this.events).push.apply(_this$events, _toConsumableArray(objects.filter(function (n) {
-      return non_exist_ids.includes(n.id);
-    })));
-  };
-};
+  }, {
+    key: "removeQueue",
+    value: function () {
+      var _removeQueue = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee2(subscriber, events) {
+        var _this = this;
+
+        var indexes;
+        return _regeneratorRuntime().wrap(function _callee2$(_context2) {
+          while (1) {
+            switch (_context2.prev = _context2.next) {
+              case 0:
+                indexes = events.map(function (n) {
+                  return _this.events_queue.findIndex(function (z) {
+                    return z.event === n && z.subscriber === subscriber;
+                  });
+                });
+                indexes.forEach(function (n) {
+                  _this.events_queue.splice(n, 1);
+                });
+
+              case 2:
+              case "end":
+                return _context2.stop();
+            }
+          }
+        }, _callee2);
+      }));
+
+      function removeQueue(_x2, _x3) {
+        return _removeQueue.apply(this, arguments);
+      }
+
+      return removeQueue;
+    }()
+    /**
+     * 
+     * @param {string} subscriber 
+     * @param {Array<string>} events 
+     */
+
+  }, {
+    key: "addUnprocessedEventsToQueue",
+    value: function () {
+      var _addUnprocessedEventsToQueue = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee3(subscriber, events) {
+        var _this2 = this;
+
+        return _regeneratorRuntime().wrap(function _callee3$(_context3) {
+          while (1) {
+            switch (_context3.prev = _context3.next) {
+              case 0:
+                events.forEach(function (e) {
+                  var _this2$events_queue;
+
+                  var _e$split = e.split('.'),
+                      _e$split2 = _slicedToArray(_e$split, 2),
+                      contract = _e$split2[0],
+                      event = _e$split2[1];
+
+                  var unprocessed_events = _this2.events.filter(function (n) {
+                    return !n.processed_subscribers[subscriber] && n.contract === contract && n.event === event;
+                  });
+
+                  (_this2$events_queue = _this2.events_queue).push.apply(_this2$events_queue, _toConsumableArray(unprocessed_events.map(function (n) {
+                    return new QueueEvent_QueueEvent(n, subscriber);
+                  })));
+                });
+
+              case 1:
+              case "end":
+                return _context3.stop();
+            }
+          }
+        }, _callee3);
+      }));
+
+      function addUnprocessedEventsToQueue(_x4, _x5) {
+        return _addUnprocessedEventsToQueue.apply(this, arguments);
+      }
+
+      return addUnprocessedEventsToQueue;
+    }()
+    /**
+     * 
+     * @returns 
+     */
+
+  }, {
+    key: "selectAllSubscribers",
+    value: function () {
+      var _selectAllSubscribers = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee4() {
+        return _regeneratorRuntime().wrap(function _callee4$(_context4) {
+          while (1) {
+            switch (_context4.prev = _context4.next) {
+              case 0:
+                return _context4.abrupt("return", _objectSpread2({}, this.subscribers));
+
+              case 1:
+              case "end":
+                return _context4.stop();
+            }
+          }
+        }, _callee4, this);
+      }));
+
+      function selectAllSubscribers() {
+        return _selectAllSubscribers.apply(this, arguments);
+      }
+
+      return selectAllSubscribers;
+    }()
+    /**
+     * 
+     * @param {string} subscriber 
+     * @param {Array<string>} events 
+     * @returns 
+     */
+
+  }, {
+    key: "updateSubscriber",
+    value: function () {
+      var _updateSubscriber = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee5(subscriber, events) {
+        var _this3 = this;
+
+        var events_added, events_removed;
+        return _regeneratorRuntime().wrap(function _callee5$(_context5) {
+          while (1) {
+            switch (_context5.prev = _context5.next) {
+              case 0:
+                events = _toConsumableArray(events.sort());
+
+                if (!this.subscribers[subscriber]) {
+                  this.subscribers[subscriber] = {
+                    events: [],
+                    added_at: _objectSpread2({}, this.latest_blocks)
+                  };
+                }
+
+                events_added = events.filter(function (n) {
+                  return !_this3.subscribers[subscriber].events.includes(n);
+                });
+                events_removed = this.subscribers[subscriber].events.filter(function (n) {
+                  return !events.includes(n);
+                });
+                this.subscribers[subscriber].events = events;
+                return _context5.abrupt("return", {
+                  events_added: events_added,
+                  events_removed: events_removed
+                });
+
+              case 6:
+              case "end":
+                return _context5.stop();
+            }
+          }
+        }, _callee5, this);
+      }));
+
+      function updateSubscriber(_x6, _x7) {
+        return _updateSubscriber.apply(this, arguments);
+      }
+
+      return updateSubscriber;
+    }()
+  }, {
+    key: "saveLatestScannedBlockNumber",
+    value: function () {
+      var _saveLatestScannedBlockNumber = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee6(contract_name, block_number) {
+        return _regeneratorRuntime().wrap(function _callee6$(_context6) {
+          while (1) {
+            switch (_context6.prev = _context6.next) {
+              case 0:
+                this.latest_blocks[contract_name] = block_number;
+
+              case 1:
+              case "end":
+                return _context6.stop();
+            }
+          }
+        }, _callee6, this);
+      }));
+
+      function saveLatestScannedBlockNumber(_x8, _x9) {
+        return _saveLatestScannedBlockNumber.apply(this, arguments);
+      }
+
+      return saveLatestScannedBlockNumber;
+    }()
+    /**
+     * 
+     * @param {string} subscriber 
+     * @returns {string}
+     */
+
+  }, {
+    key: "selectAllUnprocessedEventsBySubscriber",
+    value: function () {
+      var _selectAllUnprocessedEventsBySubscriber = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee7(subscriber) {
+        var from_queue, events;
+        return _regeneratorRuntime().wrap(function _callee7$(_context7) {
+          while (1) {
+            switch (_context7.prev = _context7.next) {
+              case 0:
+                from_queue = this.events_queue.filter(function (n) {
+                  return n.subscriber === subscriber;
+                }).map(function (n) {
+                  return n.event_id;
+                });
+                events = this.events.filter(function (n) {
+                  return from_queue.includes(n.id);
+                });
+                return _context7.abrupt("return", events);
+
+              case 3:
+              case "end":
+                return _context7.stop();
+            }
+          }
+        }, _callee7, this);
+      }));
+
+      function selectAllUnprocessedEventsBySubscriber(_x10) {
+        return _selectAllUnprocessedEventsBySubscriber.apply(this, arguments);
+      }
+
+      return selectAllUnprocessedEventsBySubscriber;
+    }()
+    /**
+     * 
+     * @param {string} id 
+     * @param {string} subscriber 
+     */
+
+  }, {
+    key: "setEventProcessedForSubscriber",
+    value: function () {
+      var _setEventProcessedForSubscriber = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee8(id, subscriber) {
+        var item, index;
+        return _regeneratorRuntime().wrap(function _callee8$(_context8) {
+          while (1) {
+            switch (_context8.prev = _context8.next) {
+              case 0:
+                item = this.events.find(function (n) {
+                  return n.id === id;
+                });
+
+                if (item) {
+                  item.processed_subscribers[subscriber] = true;
+                  index = this.events_queue.findIndex(function (n) {
+                    return n.id !== id && n.subscriber !== subscriber;
+                  });
+                  this.events_queue.splice(index, 1);
+                }
+
+              case 2:
+              case "end":
+                return _context8.stop();
+            }
+          }
+        }, _callee8, this);
+      }));
+
+      function setEventProcessedForSubscriber(_x11, _x12) {
+        return _setEventProcessedForSubscriber.apply(this, arguments);
+      }
+
+      return setEventProcessedForSubscriber;
+    }()
+    /**
+     * 
+     * @param {Array<string>} ids 
+     * @returns {Array<string>} filtered ids
+     */
+
+  }, {
+    key: "filterExistingEvents",
+    value: function () {
+      var _filterExistingEvents = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee9(ids) {
+        var exist_ids;
+        return _regeneratorRuntime().wrap(function _callee9$(_context9) {
+          while (1) {
+            switch (_context9.prev = _context9.next) {
+              case 0:
+                exist_ids = this.events.filter(function (n) {
+                  return ids.includes(n.id);
+                }).map(function (n) {
+                  return n.id;
+                });
+                ids = ids.filter(function (n) {
+                  return !exist_ids.includes(n);
+                });
+                return _context9.abrupt("return", ids);
+
+              case 3:
+              case "end":
+                return _context9.stop();
+            }
+          }
+        }, _callee9, this);
+      }));
+
+      function filterExistingEvents(_x13) {
+        return _filterExistingEvents.apply(this, arguments);
+      }
+
+      return filterExistingEvents;
+    }()
+    /**
+     * 
+     * @param {Array<any>} events 
+     * @param {Array<string>} subscribers 
+     */
+
+  }, {
+    key: "saveEvents",
+    value: function () {
+      var _saveEvents = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee10(events, subscribers) {
+        var _this$events,
+            _this4 = this;
+
+        var non_exist_ids, events_to_add, _loop, i;
+
+        return _regeneratorRuntime().wrap(function _callee10$(_context10) {
+          while (1) {
+            switch (_context10.prev = _context10.next) {
+              case 0:
+                events = events.map(function (n) {
+                  n.processed_subscribers = {};
+
+                  if (!n.args) {
+                    n.args = [];
+                  }
+
+                  return n;
+                });
+                non_exist_ids = this.filterExistingEvents(events.map(function (n) {
+                  return n.id;
+                }));
+                events_to_add = events.filter(function (n) {
+                  return non_exist_ids.includes(n.id);
+                });
+
+                (_this$events = this.events).push.apply(_this$events, _toConsumableArray(events_to_add));
+
+                _loop = function _loop(i) {
+                  var _this4$events_queue;
+
+                  (_this4$events_queue = _this4.events_queue).push.apply(_this4$events_queue, _toConsumableArray(events_to_add.map(function (n) {
+                    return new QueueEvent_QueueEvent(n, subscribers[i]);
+                  })));
+                };
+
+                for (i in subscribers) {
+                  _loop(i);
+                }
+
+              case 6:
+              case "end":
+                return _context10.stop();
+            }
+          }
+        }, _callee10, this);
+      }));
+
+      function saveEvents(_x14, _x15) {
+        return _saveEvents.apply(this, arguments);
+      }
+
+      return saveEvents;
+    }()
+  }]);
+
+  return InMemoryAdapter;
+}();
 // CONCATENATED MODULE: ./src/lib.js
 
 

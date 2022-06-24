@@ -1,13 +1,13 @@
-export const processEvents = async function(data) {
+export const addEvents = async function(scans) {
 
-  const merged_events = data.reduce((acc, n) => {
+  const merged_events = scans.reduce((acc, n) => {
     return [ ...acc, ...n.events ]
   }, []);
 
   const used_blocks = await this._loadUsedBlocks(merged_events);
   const used_txs = await this._loadUsedTxs(merged_events);
 
-  const process_events = data.map(item => item.events.map(event => {
+  const process_events = scans.map(item => item.events.map(event => {
     return this.parseEvent(
       item.contract_name, 
       event, 
@@ -18,7 +18,7 @@ export const processEvents = async function(data) {
     return [ ...acc, ...n ]
   }, []);
 
-  await this.adapter.saveEvents(process_events);
+  await this.adapter.saveEvents(process_events, Object.keys(this.subscribers));
     
   return process_events;
 }

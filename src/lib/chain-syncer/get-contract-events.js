@@ -1,8 +1,6 @@
-export const getContractEvents = async function(contract_name, max_block) {
+export const getContractEvents = async function(contract_name, max_block, opts = {}) {
 
-  
-
-  let from_block = await this.adapter.getLatestUnprocessedBlockNumber(contract_name);
+  let from_block = await this.adapter.getLatestScannedBlockNumber(contract_name);
   const contract = await this.contractsGetter(contract_name);
 
   if(!from_block) {
@@ -30,9 +28,18 @@ export const getContractEvents = async function(contract_name, max_block) {
 
   if(from_block === to_block) {
 
-    // for local env
     if(from_block < 0) {
       from_block = 0;
+    }
+  }
+
+  if(opts.force_rescan_till) {
+    const force_rescan_till = Math.max(0, opts.force_rescan_till);
+
+    if(to_block > force_rescan_till) {
+      from_block = force_rescan_till
+    } else {
+      return;
     }
   }
 

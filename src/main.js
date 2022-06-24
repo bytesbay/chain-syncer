@@ -21,7 +21,7 @@ const test = async () => {
     ethers_provider: provider,
     block_time: 3500,
 
-    query_block_limit: 100,
+    query_block_limit: 200,
     query_unprocessed_events_limit: 2,
 
     async contractsGetter(contract_name) {
@@ -35,22 +35,28 @@ const test = async () => {
 
   let volume = 0;
 
-  window.syncer.on('BUSD.Transfer#main-steam', (
+  window.syncer.on('BUSD.Transfer', (
     from,
     to,
     amount,
     { block_number, transaction_hash, global_index, from_address }
   ) => {
-    // console.log(`Event happened at ${block_number} block, ${transaction_hash} tx, from ${from_address} address.`);
 
     amount = Ethers.utils.formatEther(amount) // format from wei
-
     volume += Number(amount);
 
-    console.log('Volume', volume);
+    console.log('Transfer', amount);
   });
 
-  window.syncer.start();
+  window.syncer.on('BUSD.Approval', (
+    address,
+    amount,
+    { block_number, transaction_hash, global_index, from_address }
+  ) => {
+    console.log('Approval', Ethers.utils.formatEther(amount), address);
+  });
+
+  await window.syncer.start();
 }
 
 document.querySelector('#btn').addEventListener('click', () => test())
