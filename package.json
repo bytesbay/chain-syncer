@@ -13,7 +13,8 @@
   "main": "dist/chain-syncer.umd.min.js",
   "types": "dist/chain-syncer.d.ts",
   "dependencies": {
-    "ethers": "5.x.x"
+    "axios": "^0.27.2",
+    "ethers": "^5.6.9"
   },
   "devDependencies": {
     "@vue/cli-plugin-babel": "~4.5.0",

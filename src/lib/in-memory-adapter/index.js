@@ -1,3 +1,4 @@
+import { Event } from "./Event";
 import { QueueEvent } from "./QueueEvent";
 
 export class InMemoryAdapter {
@@ -34,7 +35,14 @@ export class InMemoryAdapter {
    */
   async removeQueue(subscriber, events) {
     
-    const indexes = events.map(n => this.events_queue.findIndex(z => z.event === n && z.subscriber === subscriber))
+    const indexes = events.map(n => {
+
+      const [ contract, event ] = n.split('.');
+
+      return this.events_queue.findIndex(z => {
+        return z.event === event && z.contract === contract && z.subscriber === subscriber
+      });
+    })
 
     indexes.forEach(n => {
       this.events_queue.splice(n, 1);
@@ -88,8 +96,8 @@ export class InMemoryAdapter {
       };
     }
 
-    const events_added = events.filter(n => !this.subscribers[subscriber].events.includes(n))
-    const events_removed = this.subscribers[subscriber].events.filter(n => !events.includes(n))
+    const events_added = events.filter(n => !this.subscribers[subscriber].events.includes(n));
+    const events_removed = this.subscribers[subscriber].events.filter(n => !events.includes(n));
 
     this.subscribers[subscriber].events = events;
 
@@ -109,7 +117,9 @@ export class InMemoryAdapter {
     subscriber
   ) {
 
-    const from_queue = this.events_queue.filter(n => n.subscriber === subscriber).map(n => n.event_id);
+    const from_queue = this.events_queue
+      .filter(n => n.subscriber === subscriber)
+      .map(n => n.event_id);
 
     const events = this.events.filter(n => from_queue.includes(n.id))
 
@@ -128,8 +138,13 @@ export class InMemoryAdapter {
     if(item) {
       item.processed_subscribers[subscriber] = true;
 
-      const index = this.events_queue.findIndex(n => n.id !== id && n.subscriber !== subscriber)
-      this.events_queue.splice(index, 1);
+      const __id = id + '_' + subscriber;
+
+      const index = this.events_queue.findIndex(n => n.id === __id)
+      
+      if(index !== -1) {
+        this.events_queue.splice(index, 1);
+      }
     }
   }
 
@@ -144,7 +159,7 @@ export class InMemoryAdapter {
       return ids.includes(n.id)
     }).map(n => n.id);
 
-    ids = ids.filter(n => !exist_ids.includes(n))
+    ids = ids.filter(n => !exist_ids.includes(n));
 
     return ids;
   }
@@ -156,23 +171,19 @@ export class InMemoryAdapter {
    */
   async saveEvents(events, subscribers) {
 
-    events = events.map(n => {
+    events = events.map(n => new Event(n))
 
-      n.processed_subscribers = {};
+    const non_exist_ids = await this.filterExistingEvents(events.map(n => n.id));
+    
+    if(non_exist_ids.length !== events.length) {
+      throw new Error('Some events already exist');
+    }
 
-      if(!n.args) { n.args = []; }
-
-      return n
-    })
-
-    const non_exist_ids = this.filterExistingEvents(events.map(n => n.id))
-    const events_to_add = events.filter(n => non_exist_ids.includes(n.id))
-
-    this.events.push(...events_to_add);
+    this.events.push(...events);
     
     for (const i in subscribers) {
       this.events_queue.push(
-        ...events_to_add.map(n => new QueueEvent(n, subscribers[i]))
+        ...events.map(n => new QueueEvent(n, subscribers[i]))
       );
     }
   }
