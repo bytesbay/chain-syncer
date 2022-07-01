@@ -6,5 +6,7 @@ export const processingTick = async function() {
   }
   await Promise.all(proms);
 
-  this._processing_timeout = setTimeout(() => this.processingTick(), this.tick_interval);
+  if(this._processing_timeout !== false) {
+    this._processing_timeout = setTimeout(() => this.processingTick(), this.tick_interval);
+  }
 }

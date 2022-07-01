@@ -18,7 +18,7 @@ export const addEvents = async function(scans) {
     return [ ...acc, ...n ]
   }, []);
 
-  await this.adapter.saveEvents(process_events, Object.keys(this.subscribers));
+  await this.adapter.saveEvents(process_events, this.subscribers);
     
   return process_events;
 }

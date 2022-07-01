@@ -14,5 +14,7 @@ export const safeRescan = async function(max_block) {
 
   this._next_safe_at = max_block + this.safe_rescan_every_n_block;
 
-  console.log('Safe rescan ...', events.length, 'events added. Next rescan at', this._next_safe_at);
+  if(this.verbose) {
+    console.log('Safe rescan ...', events.length, 'events added. Next rescan at', this._next_safe_at);
+  }
 }

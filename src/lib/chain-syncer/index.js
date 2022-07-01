@@ -49,12 +49,12 @@ export class ChainSyncer {
       ignore_contracts = [],
       verbose = false,
       contracts = [],
+      archive_ethers_provider,
 
       // required
       block_time,
       contractsGetter,
       ethers_provider,
-      archive_ethers_provider,
     } = opts;
 
     if(query_block_limit < (safe_rescan_every_n_block * 2)) {
@@ -98,6 +98,9 @@ export class ChainSyncer {
 
   async start() {
 
+    this._processing_timeout = null;
+    this._scanner_timeout = null;
+
     await this.syncSubscribers();
 
     if(this.mode === 'mono') {
@@ -113,5 +116,26 @@ export class ChainSyncer {
     }
 
     this._is_started = true;
+  }
+
+
+  stop() {
+    clearTimeout(this._processing_timeout);
+    clearTimeout(this._scanner_timeout);
+
+    this._processing_timeout = false;
+    this._scanner_timeout = false;
+  }
+
+
+  async selectPendingEvents(subscriber) {
+    return this.adapter.selectAllUnprocessedEventsBySubscriber(subscriber);
+  }
+
+
+  async markEventsAsProcessed(subscriber, event_ids) {
+    await Promise.all(
+      event_ids.map(n => this.adapter.setEventProcessedForSubscriber(n, subscriber))
+    );
   }
 }

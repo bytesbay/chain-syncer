@@ -7,6 +7,8 @@ export class InMemoryAdapter {
   events = []
   events_queue = []
   subscribers = {}
+
+  _is_chainsyncer_adapter = true
   
   constructor() {
     
@@ -74,7 +76,7 @@ export class InMemoryAdapter {
    * @returns 
    */
   async selectAllSubscribers() {
-    return { ...this.subscribers };
+    return [ ...Object.values(this.subscribers) ];
   }
 
   /**
@@ -89,6 +91,7 @@ export class InMemoryAdapter {
 
     if(!this.subscribers[subscriber]) {
       this.subscribers[subscriber] = {
+        name: subscriber,
         events: [],
         added_at: {
           ...this.latest_blocks
@@ -171,6 +174,10 @@ export class InMemoryAdapter {
    */
   async saveEvents(events, subscribers) {
 
+    if(!events.length) {
+      return;
+    }
+
     events = events.map(n => new Event(n))
 
     const non_exist_ids = await this.filterExistingEvents(events.map(n => n.id));
@@ -182,8 +189,16 @@ export class InMemoryAdapter {
     this.events.push(...events);
     
     for (const i in subscribers) {
+
+      const subs = subscribers[i];
+
+      const filtered_events = events.filter(n => {
+        const full = n.contract + '.' + n.event;
+        return subs.events.includes(full);
+      })
+
       this.events_queue.push(
-        ...events.map(n => new QueueEvent(n, subscribers[i]))
+        ...filtered_events.map(n => new QueueEvent(n, subs.name))
       );
     }
   }

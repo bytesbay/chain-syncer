@@ -6,7 +6,7 @@ export const updateSubscriber = async function(subscriber, events) {
   }
 
   if(events_removed.length) {
-    await this.adapter.removeQueue(subscriber, events_added)
+    await this.adapter.removeQueue(subscriber, events_removed)
   }
 
   await this.syncSubscribers();

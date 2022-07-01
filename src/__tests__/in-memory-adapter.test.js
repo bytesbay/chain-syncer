@@ -11,6 +11,16 @@ import { mockEvent } from '../test-helpers';
 
 describe('In-Memory-Adapter', () => {
 
+  const default_events_to_listen = [
+    'Test.ItemKilled',
+    'Test.ItemCreated',
+    'Test.ItemUpdated'
+  ];
+
+  const getSubs = async name => {
+    return (await adapter.selectAllSubscribers()).find(n => n.name === name);
+  }
+
   /**
    * @type {InMemoryAdapter}
    */
@@ -33,9 +43,9 @@ describe('In-Memory-Adapter', () => {
       expect(res.events_removed).toEqual([]);
 
       const subscribers = await adapter.selectAllSubscribers();
-      expect(Object.values(subscribers).length).toBe(1);
-      expect(subscribers[subscriber_name]).toBeTruthy();
-      expect(subscribers[subscriber_name].events).toEqual([ 'Test.ItemCreated' ]);
+      expect(subscribers.length).toBe(1);
+      expect(subscribers[0]).toBeTruthy();
+      expect(subscribers[0].events).toEqual([ 'Test.ItemCreated' ]);
     });
 
     it('should update subscriber but with no updates', async () => {
@@ -46,9 +56,9 @@ describe('In-Memory-Adapter', () => {
       expect(res.events_removed).toEqual([]);
 
       const subscribers = await adapter.selectAllSubscribers();
-      expect(Object.values(subscribers).length).toBe(1);
-      expect(subscribers[subscriber_name]).toBeTruthy();
-      expect(subscribers[subscriber_name].events).toEqual([ 'Test.ItemCreated' ]);
+      expect(subscribers.length).toBe(1);
+      expect(subscribers[0]).toBeTruthy();
+      expect(subscribers[0].events).toEqual([ 'Test.ItemCreated' ]);
     });
 
     it('should update subscriber and add new events to listen', async () => {
@@ -59,9 +69,9 @@ describe('In-Memory-Adapter', () => {
       expect(res.events_removed).toEqual([]);
 
       const subscribers = await adapter.selectAllSubscribers();
-      expect(Object.values(subscribers).length).toBe(1);
-      expect(subscribers[subscriber_name]).toBeTruthy();
-      expect(subscribers[subscriber_name].events).toEqual([ 'Test.ItemCreated', 'Test.ItemRemoved', 'Test.ItemUpdated' ]);
+      expect(subscribers.length).toBe(1);
+      expect(subscribers[0]).toBeTruthy();
+      expect(subscribers[0].events).toEqual([ 'Test.ItemCreated', 'Test.ItemRemoved', 'Test.ItemUpdated' ]);
     });
 
     it('should update subscriber and remove some events', async () => {
@@ -72,9 +82,9 @@ describe('In-Memory-Adapter', () => {
       expect(res.events_added).toEqual([]);
 
       const subscribers = await adapter.selectAllSubscribers();
-      expect(Object.values(subscribers).length).toBe(1);
-      expect(subscribers[subscriber_name]).toBeTruthy();
-      expect(subscribers[subscriber_name].events).toEqual([ 'Test.ItemCreated' ]);
+      expect(subscribers.length).toBe(1);
+      expect(subscribers[0]).toBeTruthy();
+      expect(subscribers[0].events).toEqual([ 'Test.ItemCreated' ]);
     });
 
     it('should update subscriber and remove event + add new event', async () => {
@@ -85,17 +95,19 @@ describe('In-Memory-Adapter', () => {
       expect(res.events_added).toEqual([ 'Test.ItemKilled' ]);
 
       const subscribers = await adapter.selectAllSubscribers();
-      expect(Object.values(subscribers).length).toBe(1);
-      expect(subscribers[subscriber_name]).toBeTruthy();
-      expect(subscribers[subscriber_name].events).toEqual([ 'Test.ItemKilled' ]);
+      expect(subscribers.length).toBe(1);
+      expect(subscribers[0]).toBeTruthy();
+      expect(subscribers[0].events).toEqual([ 'Test.ItemKilled' ]);
     });
   });
 
 
   describe('saveEvents()', () => {
 
-    beforeAll(() => {
+    beforeAll(async () => {
       adapter = new InMemoryAdapter();
+      await adapter.updateSubscriber(subscriber_name, default_events_to_listen);
+      await adapter.updateSubscriber(another_subscriber_name, default_events_to_listen);
     });
 
     const initial_events = [
@@ -108,7 +120,7 @@ describe('In-Memory-Adapter', () => {
 
       await adapter.saveEvents([
         ...initial_events
-      ], [ subscriber_name ]);
+      ], [ await getSubs(subscriber_name) ]);
 
       let events = await adapter.selectAllUnprocessedEventsBySubscriber(subscriber_name);
 
@@ -124,7 +136,7 @@ describe('In-Memory-Adapter', () => {
 
       await adapter.saveEvents([
         mockEvent('ItemCreated'),
-      ], [ another_subscriber_name ]);
+      ], [ await getSubs(another_subscriber_name) ]);
 
       let events = await adapter.selectAllUnprocessedEventsBySubscriber(another_subscriber_name);
 
@@ -138,7 +150,7 @@ describe('In-Memory-Adapter', () => {
 
       expect(adapter.saveEvents([
         initial_events[2],
-      ], [ subscriber_name ])).rejects.toThrow('Some events already exist');
+      ], [ await getSubs(subscriber_name) ])).rejects.toThrow('Some events already exist');
 
       let events = await adapter.selectAllUnprocessedEventsBySubscriber(subscriber_name);
 
@@ -154,8 +166,9 @@ describe('In-Memory-Adapter', () => {
 
   describe('addUnprocessedEventsToQueue()', () => {
 
-    beforeAll(() => {
+    beforeAll(async () => {
       adapter = new InMemoryAdapter();
+      await adapter.updateSubscriber(subscriber_name, [ 'Test.ItemUpdated' ]);
     });
 
     it('should add queue events', async () => {
@@ -180,7 +193,7 @@ describe('In-Memory-Adapter', () => {
 
       await adapter.saveEvents([
         mockEvent('ItemUpdated'),
-      ], [ subscriber_name ]);
+      ], [ await getSubs(subscriber_name) ]);
 
       await adapter.addUnprocessedEventsToQueue(subscriber_name, [ 'Test.ItemCreated', 'Test.ItemKilled', 'Test.ItemUpdated' ]);
 
@@ -198,8 +211,9 @@ describe('In-Memory-Adapter', () => {
 
   describe('saveLatestScannedBlockNumber()', () => {
 
-    beforeAll(() => {
+    beforeAll(async () => {
       adapter = new InMemoryAdapter();
+      await adapter.updateSubscriber(subscriber_name, default_events_to_listen);
     });
 
     it('just save the block', async () => {
@@ -215,8 +229,9 @@ describe('In-Memory-Adapter', () => {
 
   describe('setEventProcessedForSubscriber()', () => {
 
-    beforeAll(() => {
+    beforeAll(async () => {
       adapter = new InMemoryAdapter();
+      await adapter.updateSubscriber(subscriber_name, default_events_to_listen);
     });
 
     it('process one of the events and return less events for processing', async () => {
@@ -228,7 +243,7 @@ describe('In-Memory-Adapter', () => {
       
       await adapter.saveEvents([
         ...initial_events
-      ], [ subscriber_name ]);
+      ], [ await getSubs(subscriber_name) ]);
   
       await adapter.setEventProcessedForSubscriber(initial_events[0].id, subscriber_name);
   
@@ -244,20 +259,29 @@ describe('In-Memory-Adapter', () => {
 
   describe('removeQueue()', () => {
 
-    beforeAll(() => {
+    beforeAll(async () => {
       adapter = new InMemoryAdapter();
+      await adapter.updateSubscriber(subscriber_name, [ 'Test.ItemKilled', 'Test.ItemCreated' ]);
     });
 
     it('should remove events from queue', async () => {
-        
+
       await adapter.saveEvents([
         mockEvent('ItemCreated'),
         mockEvent('ItemKilled'),
-      ], [ subscriber_name ]);
+      ], [ await getSubs(subscriber_name) ]);
+
+      let events = await adapter.selectAllUnprocessedEventsBySubscriber(subscriber_name);
+
+      expect(events.length).toBe(2);
+      expect(events.map(n => n.event)).toEqual([
+        'ItemCreated',
+        'ItemKilled',
+      ]);
 
       await adapter.removeQueue(subscriber_name, [ 'Test.ItemCreated' ]);
 
-      let events = await adapter.selectAllUnprocessedEventsBySubscriber(subscriber_name);
+      events = await adapter.selectAllUnprocessedEventsBySubscriber(subscriber_name);
 
       expect(events.length).toBe(1);
       expect(events.map(n => n.event)).toEqual([
