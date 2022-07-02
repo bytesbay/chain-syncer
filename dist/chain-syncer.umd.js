@@ -2431,17 +2431,18 @@ const processSubscriberEvents = async function (subscriber) {
   }));
 };
 // CONCATENATED MODULE: ./src/lib/chain-syncer/processing-tick.js
-const processingTick = async function () {
+const processingTick = async function (sid) {
   const proms = [];
 
-  for (const key in this.subscribers) {
-    proms.push(this.processSubscriberEvents(key).catch(err => console.error(err)));
+  for (const i in this.subscribers) {
+    const subs = this.subscribers[i];
+    proms.push(this.processSubscriberEvents(subs.name).catch(err => console.error(err)));
   }
 
   await Promise.all(proms);
 
-  if (this._processing_timeout !== false) {
-    this._processing_timeout = setTimeout(() => this.processingTick(), this.tick_interval);
+  if (this._start_sid === sid) {
+    this._processing_timeout = setTimeout(() => this.processingTick(sid), this.tick_interval);
   }
 };
 // CONCATENATED MODULE: ./src/lib/chain-syncer/safe-rescan.js
@@ -2526,7 +2527,7 @@ const scanContracts = async function (max_block, opts = {}) {
   };
 };
 // CONCATENATED MODULE: ./src/lib/chain-syncer/scanner-tick.js
-const scannerTick = async function () {
+const scannerTick = async function (sid) {
   try {
     var max_block = await this.ethers_provider.getBlockNumber();
   } catch (error) {
@@ -2558,8 +2559,8 @@ const scannerTick = async function () {
     }
   }
 
-  if (this._scanner_timeout !== false) {
-    this._scanner_timeout = setTimeout(() => this.scannerTick(), this.block_time);
+  if (this._start_sid === sid) {
+    this._scanner_timeout = setTimeout(() => this.scannerTick(sid), this.block_time);
   }
 };
 // CONCATENATED MODULE: ./src/lib/chain-syncer/sync-subscribers.js
@@ -2608,6 +2609,8 @@ class chain_syncer_ChainSyncer {
     _defineProperty(this, "_next_safe_at", 0);
 
     _defineProperty(this, "_is_started", false);
+
+    _defineProperty(this, "_start_sid", 0);
 
     _defineProperty(this, "syncSubscribers", syncSubscribers);
 
@@ -2690,8 +2693,7 @@ class chain_syncer_ChainSyncer {
   }
 
   async start() {
-    this._processing_timeout = null;
-    this._scanner_timeout = null;
+    const sid = this._start_sid;
     await this.syncSubscribers();
 
     if (this.mode === 'mono') {
@@ -2699,11 +2701,11 @@ class chain_syncer_ChainSyncer {
     }
 
     if (this.mode === 'mono' || this.mode === 'scanner') {
-      this.scannerTick();
+      this.scannerTick(sid);
     }
 
     if (this.mode === 'mono') {
-      this.processingTick();
+      this.processingTick(sid);
     }
 
     this._is_started = true;
@@ -2712,8 +2714,7 @@ class chain_syncer_ChainSyncer {
   stop() {
     clearTimeout(this._processing_timeout);
     clearTimeout(this._scanner_timeout);
-    this._processing_timeout = false;
-    this._scanner_timeout = false;
+    this._start_sid++;
   }
 
   async selectPendingEvents(subscriber) {
