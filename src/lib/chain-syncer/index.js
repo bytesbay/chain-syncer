@@ -22,6 +22,7 @@ export class ChainSyncer {
 
   _next_safe_at = 0
   _is_started = false
+  _start_sid = 0
 
   syncSubscribers = syncSubscribers
   scannerTick = scannerTick
@@ -98,8 +99,7 @@ export class ChainSyncer {
 
   async start() {
 
-    this._processing_timeout = null;
-    this._scanner_timeout = null;
+    const sid = this._start_sid;
 
     await this.syncSubscribers();
 
@@ -108,11 +108,11 @@ export class ChainSyncer {
     }
     
     if(this.mode === 'mono' || this.mode === 'scanner') {
-      this.scannerTick();
+      this.scannerTick(sid);
     }
 
     if(this.mode === 'mono') {
-      this.processingTick();
+      this.processingTick(sid);
     }
 
     this._is_started = true;
@@ -122,9 +122,7 @@ export class ChainSyncer {
   stop() {
     clearTimeout(this._processing_timeout);
     clearTimeout(this._scanner_timeout);
-
-    this._processing_timeout = false;
-    this._scanner_timeout = false;
+    this._start_sid++;
   }
 
 

@@ -1,4 +1,4 @@
-export const scannerTick = async function() {
+export const scannerTick = async function(sid) {
 
   try {
     var max_block = await this.ethers_provider.getBlockNumber();
@@ -31,7 +31,7 @@ export const scannerTick = async function() {
     }
   }
 
-  if(this._scanner_timeout !== false) {
-    this._scanner_timeout = setTimeout(() => this.scannerTick(), this.block_time)
+  if(this._start_sid === sid) {
+    this._scanner_timeout = setTimeout(() => this.scannerTick(sid), this.block_time)
   }
 }
