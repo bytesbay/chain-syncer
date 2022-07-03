@@ -65,10 +65,11 @@ syncer.on('Items.Transfer', async (
 ) => {
 
   // global_index is a uniq id of event which is created from block number and logIndex padded with zeros
+  // example - if block_number is 234 and logIndex of the event is 4 so global_index will be 234000004
 
   const item = await Item.findOne({ _id: token_id });
 
-  if(!item) { // postpone until item created
+  if(!item) { // postpone until item created locally
     return false;
   }
 
