@@ -99,6 +99,10 @@ export class ChainSyncer {
 
   async start() {
 
+    if(this._is_started) {
+      throw new Error('Already started');
+    }
+
     const sid = this._start_sid;
 
     await this.syncSubscribers();
@@ -123,6 +127,7 @@ export class ChainSyncer {
     clearTimeout(this._processing_timeout);
     clearTimeout(this._scanner_timeout);
     this._start_sid++;
+    this._is_started = false;
   }
 
 

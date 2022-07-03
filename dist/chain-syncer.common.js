@@ -2684,6 +2684,10 @@ class chain_syncer_ChainSyncer {
   }
 
   async start() {
+    if (this._is_started) {
+      throw new Error('Already started');
+    }
+
     const sid = this._start_sid;
     await this.syncSubscribers();
 
@@ -2706,6 +2710,7 @@ class chain_syncer_ChainSyncer {
     clearTimeout(this._processing_timeout);
     clearTimeout(this._scanner_timeout);
     this._start_sid++;
+    this._is_started = false;
   }
 
   async selectPendingEvents(subscriber) {

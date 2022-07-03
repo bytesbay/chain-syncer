@@ -1,4 +1,4 @@
-<!-- ![Project Presentation](https://github.com/bytesbay/web3-token/raw/main/resources/logo.jpg "Web3 Token") -->
+![Project Presentation](https://github.com/bytesbay/chain-syncer/raw/main/resources/logo.jpg "Chain Syncer")
 
 # Chain Syncer
 
@@ -22,7 +22,7 @@ Using [Ethers](https://www.npmjs.com/package/ethers) package:
 ```js
 const { ChainSyncer, InMemoryAdapter } = require('chain-syncer');
 
-const default_adapter_which_you_need_to_change_to_any_other = new InMemoryAdapter();
+const default_adapter = new InMemoryAdapter(); // change it to any other adapter
 
 const ethersjs_provider = new Ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545'); // BSC testnet rpc
 
@@ -31,12 +31,12 @@ const contracts = {
     abi: [ /* ... */ ],
     network: {
       address: '0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56', 
-      deployed_transaction: '0x0f01fc521030f178115c880e200b09a40c9510f49de227aa880276f92670a3d6'
+      deployed_transaction: '0x0f01fc521030f178115c880e200b09a40c9510f49de227aa880276f92670a3d6' // scanner will start from this tx
     }
   }
 }
 
-const syncer = new ChainSyncer(default_adapter_which_you_need_to_change_to_any_other, {
+const syncer = new ChainSyncer(default_adapter, {
 
   tick_interval: 3000,
   
@@ -57,9 +57,7 @@ const syncer = new ChainSyncer(default_adapter_which_you_need_to_change_to_any_o
   },
 });
 
-syncer.start();
-
-syncer.on('Items.Transfer#default-stream', async (
+syncer.on('Items.Transfer', async (
   from, 
   to, 
   token_id, 
@@ -91,28 +89,9 @@ syncer.on('Items.Transfer#default-stream', async (
   // you can notify user that he has new items
 }));
 
+await syncer.start();
+
 ```
-
-<!-- ## Advanced usage with options (Client&Server side)
-```js
-
-// I assume here a lot of things to be imported 😀
-
-const token = await Web3Token.sign(async msg => await signer.signMessage(msg), {
-  domain: 'worldofdefish.com',
-  statement: 'I accept the WoD Terms of Service: https://service.org/tos',
-  expire_in: '3 days',
-  // won't be able to use this token for one hour
-  not_before: new Date(Date.now() + (3600 * 1000)),
-  nonce: 11111111,
-});
-
-const { address, body } = await Web3Token.verify(token, {
-  // verify that received token is signed only for our domain
-  domain: 'worldofdefish.com'
-});
-
-``` -->
 
 ---
 
@@ -127,16 +106,19 @@ Name | Description | Required | Example
 `options.query_block_limit` | Maximum amount of blocks that can be scanned per tick. For example official BSC RPC allows up to 2000 blocks per request. | `optional` (default: `100`) | `2000`
 `options.query_unprocessed_events_limit` | Maximum amount of events that can be scanned per tick | `optional` (default: `100`) | `5000`
 `options.verbose` | A flag which enables debug mode and logging | `optional` (default: `false`) | `true`
-`options.mode` | Module mode. Possible: `'events'` or `'processing'` or `'universal'`. `'events'` mode only scans events without processing. `'processing'` mode is only processing new events. `'universal'` doing both. | `optional` (default: `'universal'`) | `'processing'`
+`options.mode` | Module mode. Possible: `'mono'` or `'scanner'`. `'mono'` mode is made for monolith applications - processing and scanning happens on the same app. `'scanner'` mode is made for microservices arch - app is only scanning for new events, processing happens on the client nodes (currently we are building client package, but dont be shy to contribute) | `optional` (default: `'mono'`) | `'scanner'`
 `options.block_time` | Block time of a network you are working with. For example `3500` for BSC. | `required` | `3500` (BSC network)
 `options.ethers_provider` | Ethers.js provider | `required` | `new Ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545')`
 `options.contractsGetter` | An async function that returns object with ethers.js contract instance and tx hash of its deploy | `required` | `async () => ({ inst: new Ethers.Contract(contracts[contract_name].network.address, contracts[contract_name].abi, ethersjs_provider), deployed_transaction_hash: contracts[contract_name].network.deployed_transaction })`
 
 
 ### on(stream_name, listener)
+
+⚠️ MUST BE CALLED BEFORE SYNCER STARTS
+
 Name | Description | Required | Example
 --- | --- | --- | ---
-`stream_name` | Steam name is a string which contains contract, event and stream id (actually just id of this listener if you have microservices for example) | `required` | `'Items.Transfer#default-stream'`
+`stream_name` | Steam name is a string which contains contract and event | `required` | `'Items.Transfer'`
 `listener` | Listener function, last argument is always object of event parameters. If `false` returned from listener - event will be postponed till next processing tick | `required` | `async ({ global_index, from_address, block_number, block_timestamp, transaction_hash }) => { ... }`
 
 ### start()
