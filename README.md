@@ -112,17 +112,21 @@ Name | Description | Required | Example
 `options.contractsGetter` | An async function that returns object with ethers.js contract instance and tx hash of its deploy | `required` | `async () => ({ inst: new Ethers.Contract(contracts[contract_name].network.address, contracts[contract_name].abi, ethersjs_provider), deployed_transaction_hash: contracts[contract_name].network.deployed_transaction })`
 
 
-### on(stream_name, listener)
+### on(event, listener)
 
 ⚠️ MUST BE CALLED BEFORE SYNCER STARTS
 
 Name | Description | Required | Example
 --- | --- | --- | ---
-`stream_name` | Steam name is a string which contains contract and event | `required` | `'Items.Transfer'`
-`listener` | Listener function, last argument is always object of event parameters. If `false` returned from listener - event will be postponed till next processing tick | `required` | `async ({ global_index, from_address, block_number, block_timestamp, transaction_hash }) => { ... }`
+`event` | Event is a string which contains contract and event | `required` | `'Items.Transfer'`
+`listener` | Listener function (handler), last argument is always object of event parameters. If `false` returned from listener - event will be postponed till next processing tick | `required` | `async ({ global_index, from_address, block_number, block_timestamp, transaction_hash }) => { ... }`
 
 ### start()
 Starts scanner and processor
+
+
+### stop()
+Stops scanner and processor
 
 ---
 
