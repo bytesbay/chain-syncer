@@ -87,7 +87,6 @@ export class ChainSyncer {
     this.contractsGetter = contractsGetter;
     this.ignore_contracts = ignore_contracts;
     this.verbose = verbose;
-    this.used_contracts = contracts;
     this.blocks_amount_to_activate_archive_rpc = blocks_amount_to_activate_archive_rpc;
     this.safe_rescan_every_n_block = safe_rescan_every_n_block;
 
