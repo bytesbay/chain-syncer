@@ -105,7 +105,6 @@ Name | Description | Required | Example
 `options` | An options object | `required` | -
 `options.tick_interval` | determinates how often will process unprocessed events | `optional` (default: `2000`) | `3000` (every 3 seconds)
 `options.query_block_limit` | Maximum amount of blocks that can be scanned per tick. For example official BSC RPC allows up to 2000 blocks per request. | `optional` (default: `100`) | `2000`
-`options.query_unprocessed_events_limit` | Maximum amount of events that can be scanned per tick | `optional` (default: `100`) | `5000`
 `options.verbose` | A flag which enables debug mode and logging | `optional` (default: `false`) | `true`
 `options.mode` | Module mode. Possible: `'mono'` or `'scanner'`. `'mono'` mode is made for monolith applications - processing and scanning happens on the same app. `'scanner'` mode is made for microservices arch - app is only scanning for new events, processing happens on the client nodes (currently we are building client package, but dont be shy to contribute) | `optional` (default: `'mono'`) | `'scanner'`
 `options.block_time` | Block time of a network you are working with. For example `3500` for BSC. | `required` | `3500` (BSC network)

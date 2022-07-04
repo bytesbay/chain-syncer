@@ -22,7 +22,6 @@ const test = async () => {
     block_time: 3500,
 
     query_block_limit: 200,
-    query_unprocessed_events_limit: 2,
 
     async contractsGetter(contract_name) {
       const item = contracts[contract_name];

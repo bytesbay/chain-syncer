@@ -43,7 +43,6 @@ export class ChainSyncer {
     const {
       tick_interval = 2000,
       query_block_limit = 200,
-      query_unprocessed_events_limit = 100,
       blocks_amount_to_activate_archive_rpc = 100,
       safe_rescan_every_n_block = 100,
       mode = 'mono',
@@ -80,7 +79,6 @@ export class ChainSyncer {
   
     this.query_block_limit = query_block_limit;
     this.block_time = block_time;
-    this.query_unprocessed_events_limit = query_unprocessed_events_limit;
     this.tick_interval = tick_interval;
     this.adapter = adapter;
     this.mode = mode;
