@@ -1,8 +1,8 @@
 {
   "name": "chain-syncer",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "private": false,
-  "description": "chain-syncer is a JS module which allows you to synchronize your app with any ethereum-compatible blockchain/contract state. Fast. Realtime. Reliable.",
+  "description": "chain-syncer is a JS module which allows you to synchronize your app with any ethereum-compatible blockchain/contract state. Fast. Flexible. Reliable.",
   "author": "bytesbay",
   "scripts": {
     "serve": "vue-cli-service serve",
