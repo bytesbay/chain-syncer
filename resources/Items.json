@@ -1,11 +1,9 @@
 {
-    "networks": {
-      "97": {
+    "network": {
         "events": {},
         "links": {},
         "address": "0x783870EeF39B3d595Baf9088173ef191370689ed",
         "transactionHash": "0x4d79fcb0992e68205f3ffd8d677b9a0a59f84408d610cac9b17d0197c61cd346"
-      }
     },
     "abi": [
       {
