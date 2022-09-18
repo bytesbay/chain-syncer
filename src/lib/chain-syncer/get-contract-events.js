@@ -59,7 +59,7 @@ export const getContractEvents = async function(contract_name, max_block, opts =
   const contract = await this.contractsGetter(contract_name, {
     max_block,
     to_block,
-    from_block: from_block,
+    from_block,
     archive_rpc_advised: max_block - (from_block || 0) > 50,
     for_genesis_tx_lookup: true,
   });

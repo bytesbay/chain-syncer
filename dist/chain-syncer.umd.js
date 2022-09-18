@@ -2246,12 +2246,16 @@ const updateSubscriber = async function (subscriber, events) {
 
 const getContractEvents = async function (contract_name, max_block, opts = {}) {
   let from_block = await this.adapter.getLatestScannedBlockNumber(contract_name);
-  const contract = await this.contractsGetter(contract_name, {
-    max_block,
-    from_block: from_block ? from_block : 0
-  });
 
   if (!from_block) {
+    const contract = await this.contractsGetter(contract_name, {
+      max_block,
+      from_block: 0,
+      to_block: max_block,
+      archive_rpc_advised: true,
+      for_genesis_tx_lookup: true
+    });
+
     if (!contract.deployed_transaction_hash) {
       console.error(contract_name, 'has no deploy tx hash', contract.deployed_transaction_hash);
       return;
@@ -2293,6 +2297,13 @@ const getContractEvents = async function (contract_name, max_block, opts = {}) {
     }
   }
 
+  const contract = await this.contractsGetter(contract_name, {
+    max_block,
+    to_block,
+    from_block,
+    archive_rpc_advised: max_block - (from_block || 0) > 50,
+    for_genesis_tx_lookup: true
+  });
   const res = await this.scanContractBlocks(contract, contract_name, from_block, to_block);
   return res;
 };
@@ -2480,14 +2491,8 @@ const saveLatestBlocks = async function (scans) {
 };
 // CONCATENATED MODULE: ./src/lib/chain-syncer/scan-contract-blocks.js
 
-const scanContractBlocks = async function (contract, contract_name, from_block, to_block) {
-  if (to_block - from_block < this.blocks_amount_to_activate_archive_rpc) {
-    var ethers_provider = this.ethers_provider;
-  } else {
-    var ethers_provider = this.archive_ethers_provider;
-  }
-
-  let events = await contract.inst.connect(ethers_provider).queryFilter({}, from_block, to_block);
+const scanContractBlocks = async function (contract, contract_name, from_block, to_block, max_block) {
+  let events = await contract.inst.queryFilter({}, from_block, to_block);
   events = events.filter(n => {
     const event = n; // if unknown events (not declared in contract ABI) - just skip
 
