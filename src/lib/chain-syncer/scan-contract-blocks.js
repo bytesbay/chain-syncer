@@ -1,6 +1,6 @@
 export const scanContractBlocks = async function(contract, contract_name, from_block, to_block) {
 
-  if((to_block - from_block) < 60) {
+  if((to_block - from_block) < this.blocks_amount_to_activate_archive_rpc) {
     var ethers_provider = this.ethers_provider;
   } else {
     var ethers_provider = this.archive_ethers_provider;

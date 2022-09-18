@@ -2243,9 +2243,13 @@ const updateSubscriber = async function (subscriber, events) {
   await this.syncSubscribers();
 };
 // CONCATENATED MODULE: ./src/lib/chain-syncer/get-contract-events.js
+
 const getContractEvents = async function (contract_name, max_block, opts = {}) {
   let from_block = await this.adapter.getLatestScannedBlockNumber(contract_name);
-  const contract = await this.contractsGetter(contract_name);
+  const contract = await this.contractsGetter(contract_name, {
+    max_block,
+    from_block: from_block ? from_block : 0
+  });
 
   if (!from_block) {
     if (!contract.deployed_transaction_hash) {
@@ -2260,7 +2264,11 @@ const getContractEvents = async function (contract_name, max_block, opts = {}) {
       return;
     }
 
-    from_block = transaction.blockNumber;
+    try {
+      from_block = transaction.blockNumber;
+    } catch (error) {
+      throw new Error(`Looks like you are trying to fetch quite an old tx, check archive_ethers_provider parameter. Error: ${error.message}`);
+    }
   }
 
   let to_block = from_block + this.query_block_limit;
@@ -2473,7 +2481,7 @@ const saveLatestBlocks = async function (scans) {
 // CONCATENATED MODULE: ./src/lib/chain-syncer/scan-contract-blocks.js
 
 const scanContractBlocks = async function (contract, contract_name, from_block, to_block) {
-  if (to_block - from_block < 60) {
+  if (to_block - from_block < this.blocks_amount_to_activate_archive_rpc) {
     var ethers_provider = this.ethers_provider;
   } else {
     var ethers_provider = this.archive_ethers_provider;
@@ -2641,7 +2649,6 @@ class chain_syncer_ChainSyncer {
     const {
       tick_interval = 2000,
       query_block_limit = 200,
-      query_unprocessed_events_limit = 100,
       blocks_amount_to_activate_archive_rpc = 100,
       safe_rescan_every_n_block = 100,
       mode = 'mono',
@@ -2677,7 +2684,6 @@ class chain_syncer_ChainSyncer {
 
     this.query_block_limit = query_block_limit;
     this.block_time = block_time;
-    this.query_unprocessed_events_limit = query_unprocessed_events_limit;
     this.tick_interval = tick_interval;
     this.adapter = adapter;
     this.mode = mode;
@@ -2686,7 +2692,6 @@ class chain_syncer_ChainSyncer {
     this.contractsGetter = contractsGetter;
     this.ignore_contracts = ignore_contracts;
     this.verbose = verbose;
-    this.used_contracts = contracts;
     this.blocks_amount_to_activate_archive_rpc = blocks_amount_to_activate_archive_rpc;
     this.safe_rescan_every_n_block = safe_rescan_every_n_block;
     Object.assign(this, helpers);

@@ -1,7 +1,10 @@
 export const getContractEvents = async function(contract_name, max_block, opts = {}) {
 
   let from_block = await this.adapter.getLatestScannedBlockNumber(contract_name);
-  const contract = await this.contractsGetter(contract_name);
+  const contract = await this.contractsGetter(contract_name, {
+    max_block,
+    from_block: from_block ? from_block : 0,
+  });
 
   if(!from_block) {
 
@@ -17,7 +20,13 @@ export const getContractEvents = async function(contract_name, max_block, opts =
       console.error('There\'s a problem fetching contract\'s deploy transaction. TX:', contract.deployed_transaction_hash);
       return;
     }
-    from_block = transaction.blockNumber;
+    
+    try {
+      from_block = transaction.blockNumber;
+    } catch (error) {
+
+      throw new Error(`Looks like you are trying to fetch quite an old tx, check archive_ethers_provider parameter. Error: ${error.message}`);
+    }
   }
 
   let to_block = from_block + this.query_block_limit;
