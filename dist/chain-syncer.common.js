@@ -2234,7 +2234,6 @@ const updateSubscriber = async function (subscriber, events) {
   await this.syncSubscribers();
 };
 // CONCATENATED MODULE: ./src/lib/chain-syncer/get-contract-events.js
-
 const getContractEvents = async function (contract_name, max_block, opts = {}) {
   let from_block = await this.adapter.getLatestScannedBlockNumber(contract_name);
 
@@ -2259,11 +2258,7 @@ const getContractEvents = async function (contract_name, max_block, opts = {}) {
       return;
     }
 
-    try {
-      from_block = transaction.blockNumber;
-    } catch (error) {
-      throw new Error(`Looks like you are trying to fetch quite an old tx, check archive_ethers_provider parameter. Error: ${error.message}`);
-    }
+    from_block = transaction.blockNumber;
   }
 
   let to_block = from_block + this.query_block_limit;
