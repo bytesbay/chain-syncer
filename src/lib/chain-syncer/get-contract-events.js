@@ -1,12 +1,16 @@
 export const getContractEvents = async function(contract_name, max_block, opts = {}) {
 
   let from_block = await this.adapter.getLatestScannedBlockNumber(contract_name);
-  const contract = await this.contractsGetter(contract_name, {
-    max_block,
-    from_block: from_block ? from_block : 0,
-  });
 
   if(!from_block) {
+
+    const contract = await this.contractsGetter(contract_name, {
+      max_block,
+      from_block: 0,
+      to_block: max_block,
+      archive_rpc_advised: true,
+      for_genesis_tx_lookup: true,
+    });
 
     if(!contract.deployed_transaction_hash) {
       console.error(contract_name, 'has no deploy tx hash', contract.deployed_transaction_hash);
@@ -51,6 +55,14 @@ export const getContractEvents = async function(contract_name, max_block, opts =
       return;
     }
   }
+
+  const contract = await this.contractsGetter(contract_name, {
+    max_block,
+    to_block,
+    from_block: from_block,
+    archive_rpc_advised: max_block - (from_block || 0) > 50,
+    for_genesis_tx_lookup: true,
+  });
 
   const res = await this.scanContractBlocks(contract, contract_name, from_block, to_block);
 
