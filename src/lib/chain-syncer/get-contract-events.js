@@ -61,7 +61,7 @@ export const getContractEvents = async function(contract_name, max_block, opts =
     to_block,
     from_block,
     archive_rpc_advised: max_block - (from_block || 0) > 50,
-    for_genesis_tx_lookup: true,
+    for_genesis_tx_lookup: false,
   });
 
   const res = await this.scanContractBlocks(contract, contract_name, from_block, to_block);
