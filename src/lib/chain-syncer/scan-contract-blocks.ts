@@ -1,6 +1,15 @@
-export const scanContractBlocks = async function(contract, contract_name, from_block, to_block, max_block) {
+import { IChainSyncerContractsGetterResult, IChainSyncerScanResult } from "@/types";
+import { ChainSyncer } from ".";
 
-  let events = await (contract.inst).queryFilter({}, from_block, to_block)
+export const scanContractBlocks = async function(
+  this: ChainSyncer,
+  contract_getter_result: IChainSyncerContractsGetterResult, 
+  contract_name: string, 
+  from_block: number, 
+  to_block: number
+): Promise<IChainSyncerScanResult> {
+
+  let events = await (contract_getter_result.ethers_contract).queryFilter({}, from_block, to_block)
 
   events = events.filter(n => {
     const event = n;

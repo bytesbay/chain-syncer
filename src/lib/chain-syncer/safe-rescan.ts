@@ -1,4 +1,9 @@
-export const safeRescan = async function(max_block) {
+import { ChainSyncer } from ".";
+
+export const safeRescan = async function(
+  this: ChainSyncer,
+  max_block: number
+): Promise<void> {
 
   if(max_block < this._next_safe_at) {
     return;
@@ -15,6 +20,6 @@ export const safeRescan = async function(max_block) {
   this._next_safe_at = max_block + this.safe_rescan_every_n_block;
 
   if(this.verbose) {
-    console.log('Safe rescan ...', events.length, 'events added. Next rescan at', this._next_safe_at);
+    this.logger.log('Safe rescan ...', events.length, 'events added. Next rescan at', this._next_safe_at);
   }
 }

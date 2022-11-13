@@ -1,4 +1,11 @@
-export const addListener = async function(event, listener) {
+import { TChainSyncerListenerHook } from "@/types";
+import { ChainSyncer } from ".";
+
+export const addListener = async function(
+  this: ChainSyncer,
+  event: string, 
+  listener: TChainSyncerListenerHook
+): Promise<void> {
 
   if(this.mode !== 'mono') {
     throw new Error('Inline listeners are only available in mono mode');

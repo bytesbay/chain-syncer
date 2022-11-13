@@ -44,7 +44,7 @@ describe('Chain-Syncer', () => {
 
       return {
         inst: contracts[contract_name],
-        deployed_transaction_hash: contracts[contract_name].deployTransaction.hash
+        deploy_transaction_hash: contracts[contract_name].deployTransaction.hash
       };
     }
   };

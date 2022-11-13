@@ -52,7 +52,7 @@ const syncer = new ChainSyncer(default_adapter, {
     const contract = contracts[contract_name];
     return {
       inst: new Ethers.Contract(contract.network.address, contract.abi, ethersjs_provider),
-      deployed_transaction_hash: contract.network.deployed_transaction,
+      deploy_transaction_hash: contract.network.deployed_transaction,
     };
   },
 });
@@ -109,7 +109,7 @@ Name | Description | Required | Example
 `options.mode` | Module mode. Possible: `'mono'` or `'scanner'`. `'mono'` mode is made for monolith applications - processing and scanning happens on the same app. `'scanner'` mode is made for microservices arch - app is only scanning for new events, processing happens on the client nodes (currently we are building client package, but dont be shy to contribute) | `optional` (default: `'mono'`) | `'scanner'`
 `options.block_time` | Block time of a network you are working with. For example `3500` for BSC. | `required` | `3500` (BSC network)
 `options.ethers_provider` | Ethers.js provider | `required` | `new Ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545')`
-`options.contractsGetter` | An async function that returns object with ethers.js contract instance and tx hash of its deploy | `required` | `async () => ({ inst: new Ethers.Contract(contracts[contract_name].network.address, contracts[contract_name].abi, ethersjs_provider), deployed_transaction_hash: contracts[contract_name].network.deployed_transaction })`
+`options.contractsGetter` | An async function that returns object with ethers.js contract instance and tx hash of its deploy | `required` | `async () => ({ inst: new Ethers.Contract(contracts[contract_name].network.address, contracts[contract_name].abi, ethersjs_provider), deploy_transaction_hash: contracts[contract_name].network.deployed_transaction })`
 `options.archive_ethers_provider` | This provider activates if `scanning_block_number < max_block_height - options.blocks_amount_to_activate_archive_rpc`. Useful if you have two types of RPCs (Fast and Archive) | `optional` (default: `options.ethers_provider`) | `new Ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545')`
 `options.blocks_amount_to_activate_archive_rpc` | Amount of blocks to activate `options.archive_ethers_provider` | `optional` (default: `100`) | `50`
 `options.safe_rescan_every_n_block` | Because of unreliability of most of the RPCs, the syncer may miss some events from the latest blocks, so the syncer will rescan previous `options.safe_rescan_every_n_block * 2` blocks every `options.safe_rescan_every_n_block` block. | `optional`: (default: `100`) | `50`

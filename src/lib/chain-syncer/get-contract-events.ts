@@ -1,4 +1,13 @@
-export const getContractEvents = async function(contract_name, max_block, opts = {}) {
+import { IChainSyncerGetContractsEventsOptions, IChainSyncerScanResult } from "@/types";
+import { ethers as Ethers } from "ethers";
+import { ChainSyncer } from ".";
+
+export const getContractEvents = async function(
+  this: ChainSyncer,
+  contract_name: string, 
+  max_block: number, 
+  opts: IChainSyncerGetContractsEventsOptions = {}
+): Promise<IChainSyncerScanResult> {
 
   let from_block = await this.adapter.getLatestScannedBlockNumber(contract_name);
 
@@ -12,17 +21,21 @@ export const getContractEvents = async function(contract_name, max_block, opts =
       for_genesis_tx_lookup: true,
     });
 
-    if(!contract.deployed_transaction_hash) {
-      console.error(contract_name, 'has no deploy tx hash', contract.deployed_transaction_hash);
-      return;
+    if(!contract.deploy_transaction_hash) {
+      throw new Error(contract_name + ' has no deploy tx hash, skipping ...');
     }
 
+    let transaction: Ethers.providers.TransactionResponse;
+
     try {
-      var transaction = await this.ethers_provider
-        .getTransaction(contract.deployed_transaction_hash);
+      transaction = await this.ethers_provider
+        .getTransaction(contract.deploy_transaction_hash);
     } catch (error) {
-      console.error('There\'s a problem fetching contract\'s deploy transaction. TX:', contract.deployed_transaction_hash);
-      return;
+      throw new Error('There\'s a problem fetching contract\'s deploy transaction. TX: ' + contract.deploy_transaction_hash);
+    }
+
+    if(!transaction || !transaction.blockNumber) {
+      throw new Error('Deploy transaction has no block number. TX: ' + contract.deploy_transaction_hash);
     }
     
     from_block = transaction.blockNumber;
@@ -47,7 +60,7 @@ export const getContractEvents = async function(contract_name, max_block, opts =
     if(to_block > force_rescan_till) {
       from_block = force_rescan_till
     } else {
-      return;
+      throw new Error('Nothing to scan');
     }
   }
 

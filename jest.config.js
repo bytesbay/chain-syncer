@@ -15,7 +15,7 @@ if(process.env['INTERGRATION_TESTS']) {
 
 module.exports = {
   testPathIgnorePatterns,
-  preset: '@vue/cli-plugin-unit-jest',
+  preset: '@vue/cli-plugin-unit-jest/presets/typescript',
   testEnvironment: "node",
   maxWorkers: 1,
 }

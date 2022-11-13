@@ -1,21 +1,23 @@
-const padIndex = num => {
+const padIndex = (num: number) => {
   return num.toString().padStart(6, '0')
 }
 
-export const parseEvent = function(contract_name, event, block, tx) {
+import { IChainSyncerEvent, TChainSyncerEventArg } from "@/types";
+import { ethers as Ethers } from "ethers";
+import { ChainSyncer } from ".";
 
-  if(!tx) {
-    throw new Error('Event has no tx, trying to fetch again (problem with RPC)');
-  }
-
-  if(!block) {
-    throw new Error('Event has no block, trying to fetch again (problem with RPC)');
-  }
+export const parseEvent = function(
+  this: ChainSyncer,
+  contract_name: string, 
+  event: Ethers.Event, 
+  block: Ethers.providers.Block, 
+  tx: Ethers.providers.TransactionResponse
+): IChainSyncerEvent {
 
   const opts = {
     id: this._parseEventId(event),
     contract: contract_name, 
-    event: event.event,
+    event: event.event || 'unknown',
     transaction_hash: event.transactionHash,
     block_number: event.blockNumber,
     log_index: event.logIndex,
@@ -24,8 +26,10 @@ export const parseEvent = function(contract_name, event, block, tx) {
     global_index: Number(event.blockNumber.toString() + padIndex(event.logIndex)),
   };
 
+  // @ts-ignore
   const traverseParse = (n) => {
     if(Array.isArray(n)) {
+      // @ts-ignore
       return n.map(z => traverseParse(z))
     } else {
       if(n._isBigNumber) {
@@ -36,7 +40,7 @@ export const parseEvent = function(contract_name, event, block, tx) {
     }
   }
 
-  const args = traverseParse(event.args);
+  const args: TChainSyncerEventArg[] = traverseParse(event.args || []);
 
   return {
     ...opts,
