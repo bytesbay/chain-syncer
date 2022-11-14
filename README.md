@@ -4,6 +4,10 @@
 
 Chain Syncer is a JS module which allows you to synchronize your app with any ethereum-compatible blockchain/contract state. Fast. Flexible. Reliable.
 
+## Updates
+
+- 3.0.0 - Project codebase moved to Typescript. Also some naming changes.
+
 ---
 ## Install
 
@@ -51,17 +55,17 @@ const syncer = new ChainSyncer(default_adapter, {
   async contractsGetter(contract_name) {
     const contract = contracts[contract_name];
     return {
-      inst: new Ethers.Contract(contract.network.address, contract.abi, ethersjs_provider),
+      ethers_contract: new Ethers.Contract(contract.network.address, contract.abi, ethersjs_provider),
       deploy_transaction_hash: contract.network.deployed_transaction,
     };
   },
 });
 
 syncer.on('Items.Transfer', async (
+  { global_index, from_address, block_number, block_timestamp, transaction_hash },
   from, 
   to, 
-  token_id, 
-  { global_index, from_address, block_number, block_timestamp, transaction_hash }
+  token_id,
 ) => {
 
   // global_index is a uniq id of event which is created from block number and logIndex padded with zeros
@@ -109,9 +113,7 @@ Name | Description | Required | Example
 `options.mode` | Module mode. Possible: `'mono'` or `'scanner'`. `'mono'` mode is made for monolith applications - processing and scanning happens on the same app. `'scanner'` mode is made for microservices arch - app is only scanning for new events, processing happens on the client nodes (currently we are building client package, but dont be shy to contribute) | `optional` (default: `'mono'`) | `'scanner'`
 `options.block_time` | Block time of a network you are working with. For example `3500` for BSC. | `required` | `3500` (BSC network)
 `options.ethers_provider` | Ethers.js provider | `required` | `new Ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545')`
-`options.contractsGetter` | An async function that returns object with ethers.js contract instance and tx hash of its deploy | `required` | `async () => ({ inst: new Ethers.Contract(contracts[contract_name].network.address, contracts[contract_name].abi, ethersjs_provider), deploy_transaction_hash: contracts[contract_name].network.deployed_transaction })`
-`options.archive_ethers_provider` | This provider activates if `scanning_block_number < max_block_height - options.blocks_amount_to_activate_archive_rpc`. Useful if you have two types of RPCs (Fast and Archive) | `optional` (default: `options.ethers_provider`) | `new Ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545')`
-`options.blocks_amount_to_activate_archive_rpc` | Amount of blocks to activate `options.archive_ethers_provider` | `optional` (default: `100`) | `50`
+`options.contractsGetter` | An async function that returns object with ethers.js contract instance and tx hash of its deploy | `required` | `async () => ({ ethers_contract: new Ethers.Contract(contracts[contract_name].network.address, contracts[contract_name].abi, ethersjs_provider), deploy_transaction_hash: contracts[contract_name].network.deployed_transaction })`
 `options.safe_rescan_every_n_block` | Because of unreliability of most of the RPCs, the syncer may miss some events from the latest blocks, so the syncer will rescan previous `options.safe_rescan_every_n_block * 2` blocks every `options.safe_rescan_every_n_block` block. | `optional`: (default: `100`) | `50`
 
 
@@ -122,7 +124,7 @@ Name | Description | Required | Example
 Name | Description | Required | Example
 --- | --- | --- | ---
 `event` | Event is a string which contains contract and event | `required` | `'Items.Transfer'`
-`listener` | Listener function (handler), last argument is always object of event parameters. If `false` returned from listener - event will be postponed till next processing tick | `required` | `async ({ global_index, from_address, block_number, block_timestamp, transaction_hash }) => { ... }`
+`listener` | Listener function (handler), last argument is always object of event parameters. If `false` returned from listener - event will be postponed till next processing tick | `required` | `async ({ global_index, from_address, block_number, block_timestamp, transaction_hash }, ...event_args) => { ... }`
 
 ### start()
 Starts scanner and processor
