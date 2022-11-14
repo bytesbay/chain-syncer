@@ -1,25 +1,27 @@
-import { Event } from "./Event";
-import { QueueEvent } from "./QueueEvent";
+import { IChainSyncerAdapter, IChainSyncerEvent, IChainSyncerSubscriber } from "@/types";
+import { IEvent, toEvent } from "./event";
+import { IQueueEvent, toQueueEvent } from "./queue-event";
 
-export class InMemoryAdapter {
+interface ISubscriber {
+  name: string;
+  events: string[];
+  added_at: Record<string, number>;
+}
 
-  latest_blocks = {}
-  events = []
-  events_queue = []
-  subscribers = {}
+export class InMemoryAdapter implements IChainSyncerAdapter {
+
+  latest_blocks: Record<string, number> = {}
+  events: IEvent[] = []
+  events_queue: IQueueEvent[] = []
+  subscribers: Record<string, ISubscriber> = {}
 
   _is_chainsyncer_adapter = true
   
   constructor() {
-    
+    // ...
   }
 
-  /**
-   * 
-   * @param {string} contract_name 
-   * @returns 
-   */
-  async getLatestScannedBlockNumber(contract_name) {
+  async getLatestScannedBlockNumber(contract_name: string) {
 
     const item = this.latest_blocks[contract_name];
 
@@ -30,12 +32,7 @@ export class InMemoryAdapter {
     return 0;
   }
 
-  /**
-   * 
-   * @param {string} subscriber 
-   * @param {Array<string>} events 
-   */
-  async removeQueue(subscriber, events) {
+  async removeQueue(subscriber: string, events: string[]) {
     
     const indexes = events.map(n => {
 
@@ -51,12 +48,7 @@ export class InMemoryAdapter {
     })
   }
 
-  /**
-   * 
-   * @param {string} subscriber 
-   * @param {Array<string>} events 
-   */
-  async addUnprocessedEventsToQueue(subscriber, events) {
+  async addUnprocessedEventsToQueue(subscriber: string, events: string[]) {
 
     events.forEach(e => {
       const [ contract, event ] = e.split('.');
@@ -66,26 +58,16 @@ export class InMemoryAdapter {
       });
 
       this.events_queue.push(
-        ...unprocessed_events.map(n => new QueueEvent(n, subscriber))
+        ...unprocessed_events.map(n => toQueueEvent(n, subscriber))
       );
     })
   }
 
-  /**
-   * 
-   * @returns 
-   */
   async selectAllSubscribers() {
     return [ ...Object.values(this.subscribers) ];
   }
 
-  /**
-   * 
-   * @param {string} subscriber 
-   * @param {Array<string>} events 
-   * @returns 
-   */
-  async updateSubscriber(subscriber, events) {
+  async updateSubscriber(subscriber: string, events: string[]) {
 
     events = [ ...events.sort() ];
 
@@ -107,17 +89,12 @@ export class InMemoryAdapter {
     return { events_added, events_removed };
   }
 
-  async saveLatestScannedBlockNumber(contract_name, block_number) {
+  async saveLatestScannedBlockNumber(contract_name: string, block_number: number) {
     this.latest_blocks[contract_name] = block_number;
   }
 
-  /**
-   * 
-   * @param {string} subscriber 
-   * @returns {string}
-   */
   async selectAllUnprocessedEventsBySubscriber(
-    subscriber
+    subscriber: string
   ) {
 
     const from_queue = this.events_queue
@@ -129,12 +106,7 @@ export class InMemoryAdapter {
     return events;
   }
 
-  /**
-   * 
-   * @param {string} id 
-   * @param {string} subscriber 
-   */
-  async setEventProcessedForSubscriber(id, subscriber) {
+  async setEventProcessedForSubscriber(id: string, subscriber: string) {
 
     const item = this.events.find(n => n.id === id);
 
@@ -151,12 +123,7 @@ export class InMemoryAdapter {
     }
   }
 
-  /**
-   * 
-   * @param {Array<string>} ids 
-   * @returns {Array<string>} filtered ids
-   */
-  async filterExistingEvents(ids) {
+  async filterExistingEvents(ids: string[]) {
 
     const exist_ids = this.events.filter(n => {
       return ids.includes(n.id)
@@ -167,18 +134,14 @@ export class InMemoryAdapter {
     return ids;
   }
 
-  /**
-   * 
-   * @param {Array<any>} events 
-   * @param {Array<string>} subscribers 
-   */
-  async saveEvents(events, subscribers) {
 
-    if(!events.length) {
+  async saveEvents(_events: IChainSyncerEvent[], subscribers: IChainSyncerSubscriber[]) {
+
+    if(!_events.length) {
       return;
     }
 
-    events = events.map(n => new Event(n))
+    const events = _events.map(n => toEvent(n))
 
     const non_exist_ids = await this.filterExistingEvents(events.map(n => n.id));
     
@@ -198,7 +161,7 @@ export class InMemoryAdapter {
       })
 
       this.events_queue.push(
-        ...filtered_events.map(n => new QueueEvent(n, subs.name))
+        ...filtered_events.map(n => toQueueEvent(n, subs.name))
       );
     }
   }

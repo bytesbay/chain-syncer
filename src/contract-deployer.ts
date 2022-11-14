@@ -2,7 +2,7 @@ import { ethers as Ethers } from 'ethers';
 import FS from 'fs';
 import { ethers_provider, ethers_signer } from './ethers-init';
 
-export const deploy = async () => {
+export const deploy = async (): Promise<{ Items: Ethers.Contract, Materials: Ethers.Contract }> => {
 
   // Set gas limit and gas price, using the default Ropsten provider
   // const price = ethers.utils.formatUnits(await provider.getGasPrice(), 'gwei')

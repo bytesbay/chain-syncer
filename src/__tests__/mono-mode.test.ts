@@ -3,6 +3,7 @@ import { InMemoryAdapter } from '../lib/in-memory-adapter';
 import { ChainSyncer } from '../lib/chain-syncer';
 import { deploy } from '../contract-deployer';
 import { ethers_provider } from '../ethers-init';
+import { IChainSyncerAdapter, IChainSyncerEventMetadata, IChainSyncerOptions, IChainSyncerSubscriber } from '@/types';
 
 const Utils = Ethers.utils;
 
@@ -10,13 +11,20 @@ jest.setTimeout(30000);
 
 describe('Chain-Syncer (mono mode)', () => {
 
-  const getSubs = name => {
-    return syncer.subscribers.find(n => n.name === name);
+  const getSubs = async (name: string): Promise<IChainSyncerSubscriber> => {
+
+    const subs = syncer.subscribers.find(n => n.name === name);
+
+    if(!subs) {
+      throw new Error(`Subscriber ${name} not found`);
+    }
+
+    return subs;
   }
 
   const assertTxMetadata = ({
     global_index, block_number, block_timestamp, transaction_hash, from_address
-  }) => {
+  }: IChainSyncerEventMetadata) => {
     expect(global_index).toBeGreaterThan(1000000);
     expect(block_number).toBeGreaterThan(1);
     expect(block_timestamp).toBeGreaterThan(0);
@@ -24,21 +32,21 @@ describe('Chain-Syncer (mono mode)', () => {
     expect(Utils.isAddress(from_address)).toBe(true);
   }
 
-  const default_opts = {
+  const default_opts: IChainSyncerOptions = {
     ethers_provider: ethers_provider,
     mode: 'mono',
     tick_interval: 500,
     safe_rescan_every_n_block: 3,
     block_time: 500,
 
-    async contractsGetter(contract_name) {
-      const contracts = {
+    async contractsGetter(contract_name: string) {
+      const contracts: Record<string, Ethers.Contract> = {
         Items,
         Materials,
       };
 
       return {
-        inst: contracts[contract_name],
+        ethers_contract: contracts[contract_name],
         deploy_transaction_hash: contracts[contract_name].deployTransaction.hash
       };
     }
@@ -47,12 +55,12 @@ describe('Chain-Syncer (mono mode)', () => {
   /**
    * @type {Ethers.Contract}
    */
-  let Items;
+  let Items: Ethers.Contract;
 
   /**
    * @type {Ethers.Contract}
    */
-  let Materials;
+  let Materials: Ethers.Contract;
 
 
   beforeEach(async () => {
@@ -70,15 +78,9 @@ describe('Chain-Syncer (mono mode)', () => {
     syncer = new ChainSyncer(adapter, default_opts);
   });
 
-  /**
-   * @type {InMemoryAdapter}
-   */
-  let adapter = null;
+  let adapter: IChainSyncerAdapter;
 
-  /**
-   * @type {ChainSyncer}
-   */
-  let syncer = null;
+  let syncer: ChainSyncer;
   
   const subscriber_name = 'test-subs';
 
@@ -87,9 +89,9 @@ describe('Chain-Syncer (mono mode)', () => {
     await new Promise(async resolve => {
 
       const listener = (
-        item_id,
-        damage,
-        tx_metadata
+        tx_metadata: IChainSyncerEventMetadata,
+        item_id: any,
+        damage: any,
       ) => {
 
         expect(item_id).toBe('0');
@@ -97,7 +99,7 @@ describe('Chain-Syncer (mono mode)', () => {
 
         assertTxMetadata(tx_metadata);
 
-        resolve();
+        resolve(undefined);
       }
       
       syncer.on('Items.ItemCreated', listener);
@@ -123,9 +125,9 @@ describe('Chain-Syncer (mono mode)', () => {
     await new Promise(async resolve => {
 
       const listener = (
-        item_id,
-        damage,
-        tx_metadata
+        tx_metadata: IChainSyncerEventMetadata,
+        item_id: any,
+        damage: any,
       ) => {
 
         if(++tries <= 3) {
@@ -134,7 +136,7 @@ describe('Chain-Syncer (mono mode)', () => {
 
         expect(item_id).toBe('0');
         assertTxMetadata(tx_metadata);
-        resolve();
+        resolve(undefined);
       }
       
       syncer.on('Items.ItemCreated', listener);
@@ -162,9 +164,9 @@ describe('Chain-Syncer (mono mode)', () => {
     await new Promise(async resolve => {
 
       const listener = (
-        item_id,
-        damage,
-        tx_metadata
+        tx_metadata: IChainSyncerEventMetadata,
+        item_id: any,
+        damage: any,
       ) => {
 
         if(++tries <= 3) {
@@ -173,7 +175,7 @@ describe('Chain-Syncer (mono mode)', () => {
 
         expect(item_id).toBe('0');
         assertTxMetadata(tx_metadata);
-        resolve();
+        resolve(undefined);
       }
       
       syncer.on('Items.ItemCreated', listener);

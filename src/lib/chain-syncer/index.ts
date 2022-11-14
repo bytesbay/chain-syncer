@@ -12,7 +12,7 @@ import { scanContractBlocks } from "./scan-contract-blocks";
 import { scanContracts } from "./scan-contracts";
 import { scannerTick } from "./scanner-tick";
 import { syncSubscribers } from "./sync-subscribers";
-import { IChainSyncerAdapter, TChainSyncerContractsGetterHook, IChainSyncerLogger, IChainSyncerOptions, IChainSyncerListener, ChainSyncerMode, IChainSyncerSubscriber } from "@/types";
+import { IChainSyncerAdapter, TChainSyncerContractsGetterHook, IChainSyncerLogger, IChainSyncerOptions, IChainSyncerListener, IChainSyncerSubscriber } from "@/types";
 import { ethers as Ethers } from "ethers";
 import { _loadUsedBlocks, _loadUsedTxs, _parseEventId, _parseListenerName, _uniq } from "./helpers";
 
@@ -106,7 +106,7 @@ export class ChainSyncer {
       throw new Error('block_time argument is required');
     }
 
-    if(contracts.length && mode !== ChainSyncerMode.SCANNER) {
+    if(contracts.length && mode !== 'scanner') {
       throw new Error('contracts argument are only available in scanner mode');
     }
   

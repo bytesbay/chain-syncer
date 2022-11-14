@@ -6,9 +6,10 @@
   "author": "bytesbay",
   "scripts": {
     "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build --target lib src/lib.js",
+    "build": "vue-cli-service build --target lib src/lib.ts && npm run bundle-dts && mv src/chain-syncer.d.ts dist/chain-syncer.d.ts",
     "test": "vue-cli-service test:unit",
-    "lint": "vue-cli-service lint"
+    "lint": "vue-cli-service lint",
+    "bundle-dts": "vue-cli-service bundle-dts --baseDir ./src --main ../src/lib.ts --removeSource"
   },
   "main": "dist/chain-syncer.umd.min.js",
   "types": "dist/chain-syncer.d.ts",

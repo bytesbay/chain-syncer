@@ -24,7 +24,7 @@ export interface IChainSyncerSubscriber {
 export interface IChainSyncerAdapter {
 
   getLatestScannedBlockNumber(contract_name: string): Promise<number>;
-  removeQueue(subscriber: string, events: string[]): Promise<IChainSyncerEvent[]>;
+  removeQueue(subscriber: string, events: string[]): Promise<void>;
   addUnprocessedEventsToQueue(subscriber: string, events: string[]): Promise<void>;
   selectAllSubscribers(): Promise<IChainSyncerSubscriber[]>;
 
@@ -43,7 +43,7 @@ export interface IChainSyncerAdapter {
 
   filterExistingEvents(ids: string[]): Promise<string[]>;
 
-  saveEvents(events: IChainSyncerEvent[], subscribers: IChainSyncerSubscriber[]): Promise<string[]>;
+  saveEvents(events: IChainSyncerEvent[], subscribers: IChainSyncerSubscriber[]): Promise<void>;
 }
 
 export interface IChainSyncerContractsGetterResult {
@@ -58,11 +58,6 @@ export interface IChainSyncerLogger {
   log(...args: any[]): void;
   error(...args: any[]): void;
   warn(...args: any[]): void;
-}
-
-export enum ChainSyncerMode {
-  MONO = "mono",
-  SCANNER = "multi",
 }
 
 export interface IChainSyncerOptions {
@@ -95,7 +90,7 @@ export interface IChainSyncerOptions {
   /**
    * 
    */
-  mode?: ChainSyncerMode;
+  mode?: 'mono' | 'scanner';
 
   /**
    * 

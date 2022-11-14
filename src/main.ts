@@ -10,7 +10,7 @@ const test = async () => {
   const contracts: Record<string, any> = {
     'BUSD': {
       ethers_contract: new Ethers.Contract('0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56', abi, provider),
-      deploy_transaction_hash: '0x0f01fc521030f178115c880e200b09a40c9510f49de227aa880276f92670a3d6'
+      deploy_transaction_hash: '0x8f6e14af0f26360be691278ed5d8c83000d67ab5b2fee2684a72d7fcf5615973'
     }
   }
 

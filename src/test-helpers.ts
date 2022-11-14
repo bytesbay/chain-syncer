@@ -1,6 +1,8 @@
+import { IChainSyncerEvent } from "./types";
+
 let latest_id = 1;
 
-export const mockEvent = (event) => {
+export const mockEvent = (event: string): IChainSyncerEvent => {
 
   const hash = '0x3634a317c899e3c45a13f21d1e3b8fd03f2c908994f031460767b16d97f49742';
 
@@ -16,7 +18,7 @@ export const mockEvent = (event) => {
     tx_index: 1,
     from_address: '0x9d4133c308D497C6ee62f0ce3f43B167316F15ed',
     global_index: 10000000012,
-    block_timestamp: new Date(),
+    block_timestamp: parseInt(String(Date.now() / 1000)),
     args: [ '0x0', '233442', 15 ],
   }
 }

@@ -1,3 +1,4 @@
+import { IChainSyncerAdapter, IChainSyncerSubscriber } from '@/types';
 import { ethers as Ethers } from 'ethers';
 import { InMemoryAdapter } from '../lib/in-memory-adapter';
 import { mockEvent } from '../test-helpers';
@@ -17,14 +18,18 @@ describe('In-Memory-Adapter', () => {
     'Test.ItemUpdated'
   ];
 
-  const getSubs = async name => {
-    return (await adapter.selectAllSubscribers()).find(n => n.name === name);
+  const getSubs = async (name: string): Promise<IChainSyncerSubscriber> => {
+
+    const subs = (await adapter.selectAllSubscribers()).find(n => n.name === name);
+
+    if(!subs) {
+      throw new Error(`Subscriber ${name} not found`);
+    }
+
+    return subs;
   }
 
-  /**
-   * @type {InMemoryAdapter}
-   */
-  let adapter = null;
+  let adapter: IChainSyncerAdapter;
   
   const subscriber_name = 'test-subs';
   const another_subscriber_name = 'api';
