@@ -135,5 +135,39 @@ Stops scanner and processor
 
 ---
 
+## Contributing
+
+Feel free to contribute to this project.
+
+### Testing
+
+First of all let's start docker container with local Ganache node:
+
+```bash
+$ sh test.sh
+```
+
+Then enter the container:
+
+```bash
+$ docker exec -it chainsyncer_tester sh
+```
+
+And finally run tests:
+
+```bash
+$ npm run test
+```
+
+### Building
+
+```bash
+$ npm run build
+```
+
+Please make sure you built `dist` folder before commiting.
+
+---
+
 ## License
 Chain Syncer is released under the MIT license. © 2022 Miroslaw Shpak
