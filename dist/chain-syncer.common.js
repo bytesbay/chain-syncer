@@ -5687,7 +5687,6 @@ const syncSubscribers = function () {
 };
 
 ;// CONCATENATED MODULE: ./src/lib/chain-syncer/helpers.ts
-/* provided dependency */ var console = __webpack_require__(108);
 
 function _uniq(a) {
     const seen = {};
@@ -5720,14 +5719,14 @@ function _loadUsedTxs(events) {
     return __awaiter(this, void 0, void 0, function* () {
         const used_txs = this._uniq(events.map(n => n.transactionHash));
         return yield Promise.all(used_txs.map(n => this.ethers_provider.getTransaction(n).catch(err => {
-            console.error(`getTransaction error in ${n} tx`);
+            this.logger.error(`getTransaction error in ${n} tx`);
             return null;
         })).filter(n => n !== null)).then(res => res.filter(n => n !== null));
     });
 }
 
 ;// CONCATENATED MODULE: ./src/lib/chain-syncer/index.ts
-/* provided dependency */ var chain_syncer_console = __webpack_require__(108);
+/* provided dependency */ var console = __webpack_require__(108);
 
 
 
@@ -5974,7 +5973,7 @@ class ChainSyncer {
             writable: true,
             value: void 0
         });
-        const { tick_interval = 2000, query_block_limit = 200, safe_rescan_every_n_block = 100, mode = 'mono', verbose = false, contracts = [], logger = chain_syncer_console, 
+        const { tick_interval = 2000, query_block_limit = 200, safe_rescan_every_n_block = 100, mode = 'mono', verbose = false, contracts = [], logger = console, 
         // required
         block_time, contractsGetter, ethers_provider, } = opts;
         if (query_block_limit < (safe_rescan_every_n_block * 2)) {

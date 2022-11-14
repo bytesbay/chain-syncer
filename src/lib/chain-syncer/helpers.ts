@@ -42,7 +42,7 @@ export async function _loadUsedTxs(this: ChainSyncer, events: Ethers.Event[]) {
 
   return await Promise.all(
     used_txs.map(n => this.ethers_provider.getTransaction(n).catch(err => {
-      console.error(`getTransaction error in ${n} tx`);
+      this.logger.error(`getTransaction error in ${n} tx`);
       return null;
     })).filter(n => n !== null)
   ).then(res => res.filter(n => n !== null) as Ethers.providers.TransactionResponse[]);
