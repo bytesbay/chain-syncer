@@ -22,14 +22,14 @@ export const scannerTick = async function(
       if(!scans.length) {
         
         if(this.verbose) {
-          this.logger.log(`[MAXBLOCK: ${max_block}]`, 'No scans executed');
+          this.logger.log(`[MAXBLOCK: ${max_block}] No scans executed`);
         }
       } else {
     
         await this.saveLatestBlocks(scans);
     
         if(this.verbose) {
-          this.logger.log(`[MAXBLOCK: ${max_block}]`, events.length, 'events added');
+          this.logger.log(`[MAXBLOCK: ${max_block}] ${events.length} events added`);
         }
 
         await this.safeRescan(max_block);

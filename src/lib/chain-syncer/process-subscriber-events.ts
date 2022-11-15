@@ -35,12 +35,12 @@ export const processSubscriberEvents = async function(
 
       if(res === false) {
         if(this.verbose) {
-          this.logger.log('Postponed event', listener_name);
+          this.logger.log(`Postponed event ${listener_name}`);
         }
         return;
       }
     } catch (error) {
-      this.logger.error('Error during event processing', listener_name, error);
+      this.logger.error(`Error during event processing ${listener_name}`, error);
       return;
     }
 

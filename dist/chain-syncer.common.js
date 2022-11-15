@@ -5519,13 +5519,13 @@ const processSubscriberEvents = function (subscriber) {
                 }, ...event.args);
                 if (res === false) {
                     if (this.verbose) {
-                        this.logger.log('Postponed event', listener_name);
+                        this.logger.log(`Postponed event ${listener_name}`);
                     }
                     return;
                 }
             }
             catch (error) {
-                this.logger.error('Error during event processing', listener_name, error);
+                this.logger.error(`Error during event processing ${listener_name}`, error);
                 return;
             }
             try {
@@ -5569,7 +5569,7 @@ const safeRescan = function (max_block) {
         });
         this._next_safe_at = max_block + this.safe_rescan_every_n_block;
         if (this.verbose) {
-            this.logger.log('Safe rescan ...', events.length, 'events added. Next rescan at', this._next_safe_at);
+            this.logger.log(`Safe rescan ... ${events.length} events added. Next rescan at ${this._next_safe_at} block`);
         }
     });
 };
@@ -5615,7 +5615,7 @@ const scanContracts = function (max_block, opts = {}) {
             const contract_name = _contracts[i];
             const prom = this.getContractEvents(contract_name, max_block, opts)
                 .catch(err => {
-                this.logger.error('Error in gethering events for contract', `${contract_name}:`, err.message);
+                this.logger.error(`Error in gethering events for contract ${contract_name}:`, err);
                 return null;
             });
             proms.push(prom);
@@ -5647,13 +5647,13 @@ const scannerTick = function () {
                 const { scans, events } = yield this.scanContracts(max_block);
                 if (!scans.length) {
                     if (this.verbose) {
-                        this.logger.log(`[MAXBLOCK: ${max_block}]`, 'No scans executed');
+                        this.logger.log(`[MAXBLOCK: ${max_block}] No scans executed`);
                     }
                 }
                 else {
                     yield this.saveLatestBlocks(scans);
                     if (this.verbose) {
-                        this.logger.log(`[MAXBLOCK: ${max_block}]`, events.length, 'events added');
+                        this.logger.log(`[MAXBLOCK: ${max_block}] ${events.length} events added`);
                     }
                     yield this.safeRescan(max_block);
                 }
