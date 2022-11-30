@@ -140,6 +140,7 @@ Stops scanner and processor
 MongoDB - [@chainsyncer/mongodb-adapter](https://github.com/hereWasKitus/chainsyncer-mongodb-adapter)
 
 Please feel free to help with all possible adapter (for Postgres, MySQL etc...)
+
 Contact with me if you want @chainsyncer/* namespace in NPM.
 
 ## Contributing
