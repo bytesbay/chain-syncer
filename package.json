@@ -1,6 +1,6 @@
 {
   "name": "chain-syncer",
-  "version": "3.0.5",
+  "version": "3.0.6",
   "private": false,
   "description": "chain-syncer is a JS module which allows you to synchronize your app with any ethereum-compatible blockchain/contract state. Fast. Flexible. Reliable.",
   "author": "bytesbay",
