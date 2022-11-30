@@ -135,6 +135,13 @@ Stops scanner and processor
 
 ---
 
+## Available storage adapters
+
+MongoDB - [@chainsyncer/mongodb-adapter](https://github.com/hereWasKitus/chainsyncer-mongodb-adapter)
+
+Please feel free to help with all possible adapter (for Postgres, MySQL etc...)
+Contact with me if you want @chainsyncer/* namespace in NPM.
+
 ## Contributing
 
 Feel free to contribute to this project.
