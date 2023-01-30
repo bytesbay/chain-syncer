@@ -5625,7 +5625,7 @@ const scanContracts = function (max_block, opts = {}) {
             const contract_name = _contracts[i];
             const prom = this.getContractEvents(contract_name, max_block, opts)
                 .catch(err => {
-                this.logger.error(`Error in gethering events for contract ${contract_name}:`, err);
+                this.logger.error(`Error in gethering events for contract ${contract_name}: ${err.message}`);
                 return null;
             });
             proms.push(prom);

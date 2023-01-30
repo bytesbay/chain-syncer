@@ -16,7 +16,7 @@ export const scanContracts = async function(
 
     const prom = this.getContractEvents(contract_name, max_block, opts)
       .catch(err => {
-        this.logger.error(`Error in gethering events for contract ${contract_name}:`, err);
+        this.logger.error(`Error in gethering events for contract ${contract_name}: ${err.message}`);
         return null;
       });
 
