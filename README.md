@@ -4,6 +4,10 @@
 
 Chain Syncer is a JS module which allows you to synchronize your app with any ethereum-compatible blockchain/contract state. Fast. Flexible. Reliable.
 
+- [What problem does this module solve?](https://medium.com/@bytesbay/say-hello-to-a-custom-server-in-your-dapp-17b8f4d64093)
+
+- [Cookbook](https://medium.com/@bytesbay/chainsyncer-cookbook-76f29285fdeb)
+
 ## Updates
 
 - 3.0.0 - Project codebase moved to Typescript. Also some naming changes.
@@ -134,6 +138,14 @@ Starts scanner and processor
 Stops scanner and processor
 
 ---
+
+## Available storage adapters
+
+MongoDB - [@chainsyncer/mongodb-adapter](https://github.com/hereWasKitus/chainsyncer-mongodb-adapter)
+
+Please feel free to help with all possible adapter (for Postgres, MySQL etc...)
+
+Contact with me if you want @chainsyncer/* namespace in NPM.
 
 ## Contributing
 
