@@ -71,6 +71,7 @@ export class ChainSyncer {
   contractsGetter: TChainSyncerContractsGetterHook;
   verbose: boolean;
   safe_rescan_every_n_block: number;
+  safe_rescans_to_repeat: number;
   logger: IChainSyncerLogger;
 
   constructor(adapter: IChainSyncerAdapter, opts: IChainSyncerOptions) {
@@ -78,7 +79,8 @@ export class ChainSyncer {
     const {
       tick_interval = 2000,
       query_block_limit = 200,
-      safe_rescan_every_n_block = 100,
+      safe_rescan_every_n_block = 5,
+      safe_rescans_to_repeat = 2,
       mode = 'mono',
       verbose = false,
       contracts = [],
@@ -90,8 +92,8 @@ export class ChainSyncer {
       ethers_provider,
     } = opts;
 
-    if(query_block_limit < (safe_rescan_every_n_block * 2)) {
-      throw new Error('query_block_limit cannot be less than safe_rescan_every_n_block * 2');
+    if(query_block_limit < (safe_rescan_every_n_block * safe_rescans_to_repeat)) {
+      throw new Error('query_block_limit cannot be less than safe_rescan_every_n_block * safe_rescans_to_repeat');
     }
   
     if(!contractsGetter) {
@@ -119,6 +121,7 @@ export class ChainSyncer {
     this.contractsGetter = contractsGetter;
     this.verbose = verbose;
     this.safe_rescan_every_n_block = safe_rescan_every_n_block;
+    this.safe_rescans_to_repeat = safe_rescans_to_repeat;
     this.logger = logger;
   }
 

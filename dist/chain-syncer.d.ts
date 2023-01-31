@@ -54,6 +54,7 @@ declare module 'chain-syncer/lib/chain-syncer' {
         contractsGetter: TChainSyncerContractsGetterHook;
         verbose: boolean;
         safe_rescan_every_n_block: number;
+        safe_rescans_to_repeat: number;
         logger: IChainSyncerLogger;
         constructor(adapter: IChainSyncerAdapter, opts: IChainSyncerOptions);
         start(): Promise<void>;
@@ -142,6 +143,10 @@ declare module 'chain-syncer/types' {
             warn(...args: any[]): void;
     }
     export interface IChainSyncerOptions {
+            /**
+                * How many safe rescans to repeat before the current rescan
+                */
+            safe_rescans_to_repeat?: number;
             /**
                 * Blocktime of the chain in milliseconds
                 */

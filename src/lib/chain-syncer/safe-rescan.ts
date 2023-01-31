@@ -11,7 +11,7 @@ export const safeRescan = async function(
 
   max_block = max_block - 1; // we dont need the latest
 
-  const force_rescan_till = max_block - (this.safe_rescan_every_n_block * 2);
+  const force_rescan_till = max_block - (this.safe_rescan_every_n_block * this.safe_rescans_to_repeat);
 
   const { scans, events } = await this.scanContracts(max_block, {
     force_rescan_till,

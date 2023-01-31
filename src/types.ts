@@ -63,6 +63,11 @@ export interface IChainSyncerLogger {
 export interface IChainSyncerOptions {
 
   /**
+   * How many safe rescans to repeat before the current rescan
+   */
+  safe_rescans_to_repeat?: number;
+
+  /**
    * Blocktime of the chain in milliseconds
    */
   block_time: number;

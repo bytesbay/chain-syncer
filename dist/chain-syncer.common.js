@@ -5563,7 +5563,7 @@ const safeRescan = function (max_block) {
             return;
         }
         max_block = max_block - 1; // we dont need the latest
-        const force_rescan_till = max_block - (this.safe_rescan_every_n_block * 2);
+        const force_rescan_till = max_block - (this.safe_rescan_every_n_block * this.safe_rescans_to_repeat);
         const { scans, events } = yield this.scanContracts(max_block, {
             force_rescan_till,
         });
@@ -5967,17 +5967,23 @@ class ChainSyncer {
             writable: true,
             value: void 0
         });
+        Object.defineProperty(this, "safe_rescans_to_repeat", {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value: void 0
+        });
         Object.defineProperty(this, "logger", {
             enumerable: true,
             configurable: true,
             writable: true,
             value: void 0
         });
-        const { tick_interval = 2000, query_block_limit = 200, safe_rescan_every_n_block = 100, mode = 'mono', verbose = false, contracts = [], logger = console, 
+        const { tick_interval = 2000, query_block_limit = 200, safe_rescan_every_n_block = 5, safe_rescans_to_repeat = 2, mode = 'mono', verbose = false, contracts = [], logger = console, 
         // required
         block_time, contractsGetter, ethers_provider, } = opts;
-        if (query_block_limit < (safe_rescan_every_n_block * 2)) {
-            throw new Error('query_block_limit cannot be less than safe_rescan_every_n_block * 2');
+        if (query_block_limit < (safe_rescan_every_n_block * safe_rescans_to_repeat)) {
+            throw new Error('query_block_limit cannot be less than safe_rescan_every_n_block * safe_rescans_to_repeat');
         }
         if (!contractsGetter) {
             throw new Error('contractsGetter argument is required');
@@ -6000,6 +6006,7 @@ class ChainSyncer {
         this.contractsGetter = contractsGetter;
         this.verbose = verbose;
         this.safe_rescan_every_n_block = safe_rescan_every_n_block;
+        this.safe_rescans_to_repeat = safe_rescans_to_repeat;
         this.logger = logger;
     }
     start() {
