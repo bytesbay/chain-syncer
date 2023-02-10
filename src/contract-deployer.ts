@@ -2,25 +2,29 @@ import { ethers as Ethers } from 'ethers';
 import FS from 'fs';
 import { ethers_provider, ethers_signer } from './ethers-init';
 
-export const deploy = async (): Promise<{ Items: Ethers.Contract, Materials: Ethers.Contract }> => {
+export const deploy = async (): Promise<{ Items: Ethers.Contract, Materials: Ethers.Contract, items_abi: any[], materials_abi: any[] }> => {
 
-  // Set gas limit and gas price, using the default Ropsten provider
-  // const price = ethers.utils.formatUnits(await provider.getGasPrice(), 'gwei')
-  // const options = {gasLimit: 100000, gasPrice: ethers.utils.parseUnits(price, 'gwei')}
+  const items_artifact = JSON.parse(FS.readFileSync('src/abis/Items.json').toString())
+  const materials_artifact = JSON.parse(FS.readFileSync('src/abis/Materials.json').toString())
 
   const Items = await (async () => {
-    const metadata = JSON.parse(FS.readFileSync('src/abis/Items.json').toString())
-    const factory = new Ethers.ContractFactory(metadata.abi, metadata.data.bytecode.object, ethers_signer)
-    const contract = await factory.deploy()
-    return (await contract.deployed()).connect(ethers_signer);
+    const factory = new Ethers.ContractFactory(items_artifact.abi, items_artifact.data.bytecode.object, ethers_signer)
+    const contract = await factory.deploy().then(c => c.waitForDeployment())
+    
+    return new Ethers.Contract(await contract.getAddress(), items_artifact.abi, ethers_provider);
   })();
 
   const Materials = await (async () => {
-    const metadata = JSON.parse(FS.readFileSync('src/abis/Materials.json').toString())
-    const factory = new Ethers.ContractFactory(metadata.abi, metadata.data.bytecode.object, ethers_signer)
-    const contract = await factory.deploy()
-    return (await contract.deployed()).connect(ethers_signer);
+    const factory = new Ethers.ContractFactory(materials_artifact.abi, materials_artifact.data.bytecode.object, ethers_signer)
+    const contract = await factory.deploy().then(c => c.waitForDeployment())
+
+    return new Ethers.Contract(await contract.getAddress(), materials_artifact.abi, ethers_provider);
   })();
 
-  return { Items, Materials }
+  return { 
+    Items, 
+    Materials, 
+    items_abi: items_artifact.abi as any[], 
+    materials_abi: materials_artifact.abi as any[]
+  }
 };

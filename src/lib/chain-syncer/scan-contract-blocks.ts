@@ -1,21 +1,22 @@
-import { IChainSyncerContractsGetterResult, IChainSyncerScanResult } from "@/types";
+import { IChainSyncerContractsResolverResult, IChainSyncerScanResult } from "@/types";
+import { ethers as Ethers } from "ethers";
 import { ChainSyncer } from ".";
 
 export const scanContractBlocks = async function(
   this: ChainSyncer,
-  contract_getter_result: IChainSyncerContractsGetterResult, 
+  contract_getter_result: IChainSyncerContractsResolverResult, 
   contract_name: string, 
   from_block: number, 
   to_block: number
 ): Promise<IChainSyncerScanResult> {
 
-  let events = await (contract_getter_result.ethers_contract).queryFilter({}, from_block, to_block)
+  let events = [] as Ethers.EventLog[];
 
   events = events.filter(n => {
     const event = n;
 
     // if unknown events (not declared in contract ABI) - just skip
-    return event.event && event.args // TODO: filter with streams
+    return event.eventName && event.args // TODO: filter with streams
   })
 
   const event_ids = await this.adapter.filterExistingEvents(
@@ -29,7 +30,9 @@ export const scanContractBlocks = async function(
   
   return {
     contract_name,
+    contract_getter_result,
     events,
-    block: to_block,
+    from_block: from_block,
+    to_block: to_block,
   }
 }

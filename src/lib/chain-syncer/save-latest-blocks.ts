@@ -6,6 +6,6 @@ export const saveLatestBlocks = async function(
   scans: IChainSyncerScanResult[]
 ): Promise<void> {
   await Promise.all(
-    scans.map(n => this.adapter.saveLatestScannedBlockNumber(n.contract_name, n.block))
+    scans.map(n => this.adapter.saveLatestScannedBlockNumber(n.contract_name, n.to_block))
   );
 }

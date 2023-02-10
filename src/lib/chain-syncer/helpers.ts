@@ -22,28 +22,44 @@ export function _parseListenerName(this: ChainSyncer, event: string) {
   return { contract_name, event_name }
 }
 
-export function _parseEventId(this: ChainSyncer, event: Ethers.Event) {
-  return event.transactionHash + '_' + event.logIndex
+export function _parseEventId(this: ChainSyncer, event: Ethers.EventLog) {
+  return event.transactionHash + '_' + event.index
 }
 
-export async function _loadUsedBlocks(this: ChainSyncer, events: Ethers.Event[]) {
+export async function _loadUsedBlocks(this: ChainSyncer, events: Ethers.EventLog[]) {
   const used_blocks = this._uniq(events.map(n => n.blockNumber));
 
   return await Promise.all(
-    used_blocks.map(n => this.ethers_provider.getBlock(n).catch(err => {
-      this.logger.error(`getBlock error in ${n} block`);
-      return null;
-    })).filter(n => n !== null)
-  ).then(res => res.filter(n => n !== null) as Ethers.providers.Block[]);
+    used_blocks.map(n => {
+
+      return this.rpcHandle(async (rpc_url) => {
+        const provider = new Ethers.JsonRpcProvider(rpc_url, undefined, {
+          polling: false
+        });
+        return await provider.getBlock(n).catch((err: any) => {
+          this.logger.error(`getBlock error in ${n} block`);
+          return null;
+        })
+      }, false);
+      
+    }).filter(n => n !== null)
+  ).then(res => res.filter(n => n !== null) as Ethers.Block[]);
 }
 
-export async function _loadUsedTxs(this: ChainSyncer, events: Ethers.Event[]) {
+export async function _loadUsedTxs(this: ChainSyncer, events: Ethers.EventLog[]) {
   const used_txs = this._uniq(events.map(n => n.transactionHash));
 
   return await Promise.all(
-    used_txs.map(n => this.ethers_provider.getTransaction(n).catch(err => {
-      this.logger.error(`getTransaction error in ${n} tx`);
-      return null;
-    })).filter(n => n !== null)
-  ).then(res => res.filter(n => n !== null) as Ethers.providers.TransactionResponse[]);
+    used_txs.map(n => {
+      return this.rpcHandle(async (rpc_url) => {
+        const provider = new Ethers.JsonRpcProvider(rpc_url, undefined, {
+          polling: false
+        });
+        return await provider.getTransaction(n).catch((err: any) => {
+          this.logger.error(`getTransaction error in ${n} tx`);
+          return null;
+        })
+      }, false);
+    }).filter(n => n !== null)
+  ).then(res => res.filter(n => n !== null) as Ethers.TransactionResponse[]);
 }

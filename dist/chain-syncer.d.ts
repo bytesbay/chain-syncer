@@ -12,7 +12,7 @@ declare module 'chain-syncer' {
 }
 
 declare module 'chain-syncer/lib/chain-syncer' {
-    import { IChainSyncerAdapter, TChainSyncerContractsGetterHook, IChainSyncerLogger, IChainSyncerOptions, IChainSyncerListener, IChainSyncerSubscriber } from "@/types";
+    import { IChainSyncerAdapter, TChainSyncerContractsResolverHook, IChainSyncerLogger, IChainSyncerOptions, IChainSyncerListener, IChainSyncerSubscriber } from "@/types";
     import { ethers as Ethers } from "ethers";
     import { _loadUsedBlocks, _loadUsedTxs, _parseEventId, _parseListenerName, _uniq } from "chain-syncer/lib/chain-syncer/helpers";
     export class ChainSyncer {
@@ -25,14 +25,14 @@ declare module 'chain-syncer/lib/chain-syncer' {
         _is_processor_busy: boolean;
         _current_max_block: number;
         addEvents: (this: ChainSyncer, scans: import("@/types").IChainSyncerScanResult[]) => Promise<import("@/types").IChainSyncerEvent[]>;
-        parseEvent: (this: ChainSyncer, contract_name: string, event: Ethers.Event, block: Ethers.providers.Block, tx: Ethers.providers.TransactionResponse) => import("@/types").IChainSyncerEvent;
-        getContractEvents: (this: ChainSyncer, contract_name: string, max_block: number, opts?: import("@/types").IChainSyncerGetContractsEventsOptions) => Promise<import("@/types").IChainSyncerScanResult>;
+        parseEvent: (this: ChainSyncer, contract_name: string, event: Ethers.EventLog, block: Ethers.Block, tx: Ethers.TransactionResponse) => import("@/types").IChainSyncerEvent;
+        resolveBlockRanges: (this: ChainSyncer, contract_name: string, max_block: number, opts?: import("@/types").IChainSyncerGetContractsEventsOptions) => Promise<import("@/types").IChainSyncerScanResult>;
         saveLatestBlocks: (this: ChainSyncer, scans: import("@/types").IChainSyncerScanResult[]) => Promise<void>;
         scanContracts: (this: ChainSyncer, max_block: number, opts?: import("@/types").IChainSyncerGetContractsEventsOptions) => Promise<{
             scans: import("@/types").IChainSyncerScanResult[];
             events: import("@/types").IChainSyncerEvent[];
         }>;
-        scanContractBlocks: (this: ChainSyncer, contract_getter_result: import("@/types").IChainSyncerContractsGetterResult, contract_name: string, from_block: number, to_block: number) => Promise<import("@/types").IChainSyncerScanResult>;
+        scanContractBlocks: (this: ChainSyncer, contract_getter_result: import("@/types").IChainSyncerContractsResolverResult, contract_name: string, from_block: number, to_block: number) => Promise<import("@/types").IChainSyncerScanResult>;
         on: (this: ChainSyncer, event: string, listener: import("@/types").TChainSyncerListenerHook) => Promise<void>;
         updateSubscriber: (this: ChainSyncer, subscriber: string, events: string[]) => Promise<void>;
         syncSubscribers: (this: ChainSyncer) => Promise<void>;
@@ -40,6 +40,8 @@ declare module 'chain-syncer/lib/chain-syncer' {
         safeRescan: (this: ChainSyncer, max_block: number) => Promise<void>;
         processingTick: (this: ChainSyncer) => Promise<void>;
         processSubscriberEvents: (this: ChainSyncer, subscriber: string) => Promise<void>;
+        rpcHandle: <T>(this: ChainSyncer, handler: (rpc_url: string) => Promise<T>, archive_preferred?: boolean) => Promise<T>;
+        fillScansWithEvents: (this: ChainSyncer, scans: import("@/types").IChainSyncerScanResult[]) => Promise<void>;
         _uniq: typeof _uniq;
         _parseListenerName: typeof _parseListenerName;
         _parseEventId: typeof _parseEventId;
@@ -50,12 +52,14 @@ declare module 'chain-syncer/lib/chain-syncer' {
         tick_interval: number;
         adapter: IChainSyncerAdapter;
         mode: string;
-        ethers_provider: Ethers.providers.Provider;
-        contractsGetter: TChainSyncerContractsGetterHook;
+        rpc_url: string[];
+        contractsResolver: TChainSyncerContractsResolverHook;
         verbose: boolean;
         safe_rescan_every_n_block: number;
         safe_rescans_to_repeat: number;
         logger: IChainSyncerLogger;
+        archive_rpc_url: string[];
+        archive_rpc_activator_edge: number;
         constructor(adapter: IChainSyncerAdapter, opts: IChainSyncerOptions);
         start(): Promise<void>;
         stop(): Promise<void>;
@@ -132,11 +136,12 @@ declare module 'chain-syncer/types' {
             filterExistingEvents(ids: string[]): Promise<string[]>;
             saveEvents(events: IChainSyncerEvent[], subscribers: IChainSyncerSubscriber[]): Promise<void>;
     }
-    export interface IChainSyncerContractsGetterResult {
-            ethers_contract: Ethers.Contract;
-            deploy_transaction_hash: string;
+    export interface IChainSyncerContractsResolverResult {
+            contract_abi: any[];
+            start_block: number;
+            address: string;
     }
-    export type TChainSyncerContractsGetterHook = (contract_name: string, metadata: IChainSyncerContractsGetterMetadata) => Promise<IChainSyncerContractsGetterResult>;
+    export type TChainSyncerContractsResolverHook = (contract_name: string) => Promise<IChainSyncerContractsResolverResult>;
     export interface IChainSyncerLogger {
             log(...args: any[]): void;
             error(...args: any[]): void;
@@ -154,11 +159,15 @@ declare module 'chain-syncer/types' {
             /**
                 *
                 */
-            contractsGetter: TChainSyncerContractsGetterHook;
+            contractsResolver: TChainSyncerContractsResolverHook;
             /**
-                * EthersJS provider
+                * RPC url
                 */
-            ethers_provider: Ethers.providers.Provider;
+            rpc_url: string | string[];
+            /**
+                * archive RPC url, activates if block range that is requested is too big. If not set, then the default rpc_url will be used
+                */
+            archive_rpc_url?: string | string[];
             /**
                 * How many blocks to query at once
                 */
@@ -179,13 +188,19 @@ declare module 'chain-syncer/types' {
                 *
                 */
             safe_rescan_every_n_block?: number;
+            /**
+                * number of blocks that activates archive rpc
+                */
+            archive_rpc_activator_edge?: number;
             contracts?: string[];
             logger?: IChainSyncerLogger;
     }
     export interface IChainSyncerScanResult {
             contract_name: string;
-            events: Ethers.Event[];
-            block: number;
+            from_block: number;
+            to_block: number;
+            events: (Ethers.EventLog)[];
+            contract_getter_result: IChainSyncerContractsResolverResult;
     }
     export interface IChainSyncerContractsGetterMetadata {
             max_block: number;
@@ -221,9 +236,9 @@ declare module 'chain-syncer/lib/chain-syncer/helpers' {
         contract_name: string;
         event_name: string;
     };
-    export function _parseEventId(this: ChainSyncer, event: Ethers.Event): string;
-    export function _loadUsedBlocks(this: ChainSyncer, events: Ethers.Event[]): Promise<Ethers.providers.Block[]>;
-    export function _loadUsedTxs(this: ChainSyncer, events: Ethers.Event[]): Promise<Ethers.providers.TransactionResponse[]>;
+    export function _parseEventId(this: ChainSyncer, event: Ethers.EventLog): string;
+    export function _loadUsedBlocks(this: ChainSyncer, events: Ethers.EventLog[]): Promise<Ethers.Block[]>;
+    export function _loadUsedTxs(this: ChainSyncer, events: Ethers.EventLog[]): Promise<Ethers.TransactionResponse[]>;
 }
 
 declare module 'chain-syncer/lib/in-memory-adapter/event' {

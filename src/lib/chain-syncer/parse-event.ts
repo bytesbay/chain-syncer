@@ -9,21 +9,21 @@ import { ChainSyncer } from ".";
 export const parseEvent = function(
   this: ChainSyncer,
   contract_name: string, 
-  event: Ethers.Event, 
-  block: Ethers.providers.Block, 
-  tx: Ethers.providers.TransactionResponse
+  event: Ethers.EventLog, 
+  block: Ethers.Block, 
+  tx: Ethers.TransactionResponse
 ): IChainSyncerEvent {
 
   const opts = {
     id: this._parseEventId(event),
     contract: contract_name, 
-    event: event.event || 'unknown',
+    event: event.eventName || 'unknown',
     transaction_hash: event.transactionHash,
     block_number: event.blockNumber,
-    log_index: event.logIndex,
+    log_index: event.index,
     tx_index: event.transactionIndex,
     from_address: tx.from,
-    global_index: Number(event.blockNumber.toString() + padIndex(event.logIndex)),
+    global_index: Number(event.blockNumber.toString() + padIndex(event.index)),
   };
 
   // @ts-ignore

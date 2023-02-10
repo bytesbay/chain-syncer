@@ -46,12 +46,13 @@ export interface IChainSyncerAdapter {
   saveEvents(events: IChainSyncerEvent[], subscribers: IChainSyncerSubscriber[]): Promise<void>;
 }
 
-export interface IChainSyncerContractsGetterResult {
-  ethers_contract: Ethers.Contract;
-  deploy_transaction_hash: string;
+export interface IChainSyncerContractsResolverResult {
+  contract_abi: any[];
+  start_block: number;
+  address: string;
 }
 
-export type TChainSyncerContractsGetterHook = (contract_name: string, metadata: IChainSyncerContractsGetterMetadata) => Promise<IChainSyncerContractsGetterResult>;
+export type TChainSyncerContractsResolverHook = (contract_name: string) => Promise<IChainSyncerContractsResolverResult>;
 
 export interface IChainSyncerLogger {
 
@@ -75,12 +76,17 @@ export interface IChainSyncerOptions {
   /**
    * 
    */
-  contractsGetter: TChainSyncerContractsGetterHook;
+  contractsResolver: TChainSyncerContractsResolverHook;
 
   /**
-   * EthersJS provider
+   * RPC url
    */
-  ethers_provider: Ethers.providers.Provider;
+  rpc_url: string | string[];
+
+  /**
+   * archive RPC url, activates if block range that is requested is too big. If not set, then the default rpc_url will be used
+   */
+  archive_rpc_url?: string | string[];
 
   /**
    * How many blocks to query at once
@@ -109,6 +115,12 @@ export interface IChainSyncerOptions {
   safe_rescan_every_n_block?: number;
 
 
+  /**
+   * number of blocks that activates archive rpc
+   */
+  archive_rpc_activator_edge?: number;
+
+
   contracts?: string[];
 
 
@@ -118,10 +130,10 @@ export interface IChainSyncerOptions {
 
 export interface IChainSyncerScanResult {
   contract_name: string;
-  // from_block: number;
-  // to_block: number;
-  events: Ethers.Event[];
-  block: number,
+  from_block: number;
+  to_block: number;
+  events: (Ethers.EventLog)[];
+  contract_getter_result: IChainSyncerContractsResolverResult;
 }
 
 export interface IChainSyncerContractsGetterMetadata {

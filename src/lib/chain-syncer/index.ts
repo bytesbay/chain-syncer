@@ -1,7 +1,7 @@
 import { addEvents } from "./add-events";
 import { addListener } from "./add-listener";
 import { updateSubscriber } from "./update-subscriber";
-import { getContractEvents } from "./get-contract-events";
+import { resolveBlockRanges } from "./resolve-block-ranges";
 
 import { parseEvent } from "./parse-event";
 import { processSubscriberEvents } from "./process-subscriber-events";
@@ -12,9 +12,11 @@ import { scanContractBlocks } from "./scan-contract-blocks";
 import { scanContracts } from "./scan-contracts";
 import { scannerTick } from "./scanner-tick";
 import { syncSubscribers } from "./sync-subscribers";
-import { IChainSyncerAdapter, TChainSyncerContractsGetterHook, IChainSyncerLogger, IChainSyncerOptions, IChainSyncerListener, IChainSyncerSubscriber } from "@/types";
+import { IChainSyncerAdapter, TChainSyncerContractsResolverHook, IChainSyncerLogger, IChainSyncerOptions, IChainSyncerListener, IChainSyncerSubscriber } from "@/types";
 import { ethers as Ethers } from "ethers";
 import { _loadUsedBlocks, _loadUsedTxs, _parseEventId, _parseListenerName, _uniq } from "./helpers";
+import { rpcHandle } from "./rpc-handle";
+import { fillScansWithEvents } from "./fill-scans-with-events";
 
 export class ChainSyncer {
 
@@ -28,23 +30,9 @@ export class ChainSyncer {
   _is_processor_busy = false;
   _current_max_block = 0;
 
-  // syncSubscribers(): Promise<void>;
-  // scannerTick(): Promise<void>;
-  // processingTick(): Promise<void>;
-  // processSubscriberEvents(subscriber: string): Promise<void>;
-  // updateSubscriber(subscriber: string, events: string[]): Promise<void>;
-  // addEvents(events: IChainSyncerEvent[]): Promise<void>;
-  // getContractEvents(contract: Ethers.Contract, from_block: number, to_block: number): Promise<IChainSyncerEvent[]>;
-  // saveLatestBlocks(contract_name: string, block_number: number): Promise<void>;
-  // scanContractBlocks(contract_name: string, from_block: number, to_block: number): Promise<void>;
-  // parseEvent(event: Ethers.Event): IChainSyncerEvent;
-  // on(event: string, callback: (event: IChainSyncerEvent) => void): void;
-  // scanContracts(): Promise<void>;
-  // safeRescan(): Promise<void>;
-
   addEvents = addEvents;
   parseEvent = parseEvent;
-  getContractEvents = getContractEvents;
+  resolveBlockRanges = resolveBlockRanges;
   saveLatestBlocks = saveLatestBlocks;
   scanContracts = scanContracts;
   scanContractBlocks = scanContractBlocks;
@@ -55,6 +43,8 @@ export class ChainSyncer {
   safeRescan = safeRescan;
   processingTick = processingTick;
   processSubscriberEvents = processSubscriberEvents;
+  rpcHandle = rpcHandle;
+  fillScansWithEvents = fillScansWithEvents;
 
   _uniq = _uniq;
   _parseListenerName = _parseListenerName;
@@ -67,12 +57,14 @@ export class ChainSyncer {
   tick_interval: number;
   adapter: IChainSyncerAdapter;
   mode: string;
-  ethers_provider: Ethers.providers.Provider;
-  contractsGetter: TChainSyncerContractsGetterHook;
+  rpc_url: string[];
+  contractsResolver: TChainSyncerContractsResolverHook;
   verbose: boolean;
   safe_rescan_every_n_block: number;
   safe_rescans_to_repeat: number;
   logger: IChainSyncerLogger;
+  archive_rpc_url: string[];
+  archive_rpc_activator_edge: number;
 
   constructor(adapter: IChainSyncerAdapter, opts: IChainSyncerOptions) {
 
@@ -85,23 +77,25 @@ export class ChainSyncer {
       verbose = false,
       contracts = [],
       logger = console,
+      archive_rpc_url = [],
+      archive_rpc_activator_edge = 1000,
 
       // required
       block_time,
-      contractsGetter,
-      ethers_provider,
+      contractsResolver,
+      rpc_url,
     } = opts;
 
     if(query_block_limit < (safe_rescan_every_n_block * safe_rescans_to_repeat)) {
       throw new Error('query_block_limit cannot be less than safe_rescan_every_n_block * safe_rescans_to_repeat');
     }
   
-    if(!contractsGetter) {
-      throw new Error('contractsGetter argument is required');
+    if(!contractsResolver) {
+      throw new Error('contractsResolver argument is required');
     }
   
-    if(!ethers_provider) {
-      throw new Error('ethers_provider argument is required');
+    if(!rpc_url) {
+      throw new Error('rpc_url argument is required');
     }
   
     if(!block_time) {
@@ -111,14 +105,16 @@ export class ChainSyncer {
     if(contracts.length && mode !== 'scanner') {
       throw new Error('contracts argument are only available in scanner mode');
     }
-  
+
+    this.archive_rpc_url = Array.isArray(archive_rpc_url) ? archive_rpc_url : [ archive_rpc_url ];
+    this.archive_rpc_activator_edge = archive_rpc_activator_edge;
     this.query_block_limit = query_block_limit;
     this.block_time = block_time;
     this.tick_interval = tick_interval;
     this.adapter = adapter;
     this.mode = mode;
-    this.ethers_provider = ethers_provider;
-    this.contractsGetter = contractsGetter;
+    this.rpc_url = !Array.isArray(rpc_url) ? [ rpc_url ] : rpc_url;
+    this.contractsResolver = contractsResolver;
     this.verbose = verbose;
     this.safe_rescan_every_n_block = safe_rescan_every_n_block;
     this.safe_rescans_to_repeat = safe_rescans_to_repeat;

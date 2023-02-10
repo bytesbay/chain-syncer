@@ -9,7 +9,7 @@ export const addEvents = async function(
 
   const merged_events = scans.reduce((acc, n) => {
     return [ ...acc, ...n.events ]
-  }, [] as Ethers.Event[]);
+  }, [] as Ethers.EventLog[]);
 
   const used_blocks = await this._loadUsedBlocks(merged_events);
   const used_txs = await this._loadUsedTxs(merged_events);

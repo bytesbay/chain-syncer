@@ -31,27 +31,35 @@ describe('Chain-Syncer', () => {
   }
 
   const default_opts: IChainSyncerOptions = {
-    ethers_provider: ethers_provider,
+    rpc_url: ethers_provider._getConnection().url,
     mode: 'scanner',
     tick_interval: 500,
     safe_rescan_every_n_block: 3,
     block_time: 500,
 
-    async contractsGetter(contract_name: string) {
+    async contractsResolver(contract_name: string) {
       const contracts: Record<string, Ethers.Contract> = {
         Items,
         Materials,
       };
 
+      const abis: Record<string, any[]> = {
+        Items: items_abi,
+        Materials: materials_abi,
+      };
+
       return {
-        ethers_contract: contracts[contract_name],
-        deploy_transaction_hash: contracts[contract_name].deployTransaction.hash
+        contract_abi: abis[contract_name],
+        start_block: await ethers_provider.getBlockNumber(),
+        address: await contracts[contract_name].getAddress(),
       };
     }
   };
 
   let Items: Ethers.Contract;
   let Materials: Ethers.Contract;
+  let items_abi: any[];
+  let materials_abi: any[];
 
   beforeAll(async () => {
 
@@ -59,6 +67,8 @@ describe('Chain-Syncer', () => {
 
     Items = contracts.Items;
     Materials = contracts.Materials;
+    items_abi = contracts.items_abi;
+    materials_abi = contracts.materials_abi;
 
     adapter = new InMemoryAdapter();
     syncer = new ChainSyncer(adapter, default_opts);

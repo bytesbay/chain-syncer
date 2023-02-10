@@ -12,6 +12,8 @@ Chain Syncer is a JS module which allows you to synchronize your app with any et
 
 - 3.0.0 - Project codebase moved to Typescript. Also some naming changes.
 
+- 4.0.0 - Reworked reliablity and speed of the module. Now it is much faster and more reliable. If some of the RPCs are down - it will automatically switch to another one. Also ChainSyncer now tries to batch load events from the blockchain. This allows to reduce the number of RPC calls and speed up the process. And the last one - Chain Syncer moved to [Ethers V6](https://docs.ethers.org/v6/)
+
 ---
 ## Install
 
@@ -32,15 +34,11 @@ const { ChainSyncer, InMemoryAdapter } = require('chain-syncer');
 
 const default_adapter = new InMemoryAdapter(); // change it to any other adapter
 
-const ethersjs_provider = new Ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545'); // BSC testnet rpc
-
 const contracts = {
   'Items': {
-    abi: [ /* ... */ ],
-    network: {
-      address: '0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56', 
-      deployed_transaction: '0x0f01fc521030f178115c880e200b09a40c9510f49de227aa880276f92670a3d6' // scanner will start from this tx
-    }
+    abi: [ /* ... ABI of the contract that is generated after build (using truffle, for example) */ ],
+    address: '0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56',
+    start_block: 27118825 // scanner will start from this block
   }
 }
 
@@ -54,14 +52,10 @@ const syncer = new ChainSyncer(default_adapter, {
   
   block_time: 3500,
   
-  ethers_provider: ethersjs_provider,
+  rpc_url: 'https://data-seed-prebsc-1-s1.binance.org:8545',
   
-  async contractsGetter(contract_name) {
-    const contract = contracts[contract_name];
-    return {
-      ethers_contract: new Ethers.Contract(contract.network.address, contract.abi, ethersjs_provider),
-      deploy_transaction_hash: contract.network.deployed_transaction,
-    };
+  async contractsResolver(contract_name) {
+    return contracts[contract_name];
   },
 });
 
@@ -116,8 +110,8 @@ Name | Description | Required | Example
 `options.verbose` | A flag which enables debug mode and logging | `optional` (default: `false`) | `true`
 `options.mode` | Module mode. Possible: `'mono'` or `'scanner'`. `'mono'` mode is made for monolith applications - processing and scanning happens on the same app. `'scanner'` mode is made for microservices arch - app is only scanning for new events, processing happens on the client nodes (currently we are building client package, but dont be shy to contribute) | `optional` (default: `'mono'`) | `'scanner'`
 `options.block_time` | Block time of a network you are working with. For example `3500` for BSC. | `required` | `3500` (BSC network)
-`options.ethers_provider` | Ethers.js provider | `required` | `new Ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545')`
-`options.contractsGetter` | An async function that returns object with ethers.js contract instance and tx hash of its deploy | `required` | `async () => ({ ethers_contract: new Ethers.Contract(contracts[contract_name].network.address, contracts[contract_name].abi, ethersjs_provider), deploy_transaction_hash: contracts[contract_name].network.deployed_transaction })`
+`options.rpc_url` | RPC url that is used to get blockchain data. If array of urls is passed - it will work as fallback urls. | `required` | `'https://data-seed-prebsc-1-s1.binance.org:8545'` or `[ 'https://bscrpc.com', 'https://bscrpc2.com', 'https://bscrpc3.com' ]`
+`options.contractsResolver` | An async function that returns object with ethers.js contract instance and tx hash of its deploy | `required` | `async () => ({ contract_abi: contracts[contract_name].abi, start_block: 20304005, address: contracts[contract_name].network.address })`
 `options.safe_rescan_every_n_block` | Because of unreliability of most of the RPCs, the syncer may miss some events from the latest blocks, so the syncer will rescan previous `options.safe_rescan_every_n_block * 2` blocks every `options.safe_rescan_every_n_block` block. | `optional`: (default: `100`) | `50`
 
 
@@ -146,6 +140,20 @@ MongoDB - [@chainsyncer/mongodb-adapter](https://github.com/hereWasKitus/chainsy
 Please feel free to help with all possible adapter (for Postgres, MySQL etc...)
 
 Contact with me if you want @chainsyncer/* namespace in NPM.
+
+## FAQ
+
+### How to use Chain Syncer for multiple networks?
+
+Chain Syncer is not designed to work with multiple networks at the same time. You can use it for multiple networks, but you have to create separate instance of Chain Syncer for each network.
+
+### How to make sure that I have the latest state of the field?
+
+Use global_index to make sure that you have the latest state of the field.
+
+### Why sometimes I receive errors while syncing?
+
+Because of unreliability of most of the RPCs, the syncer may miss some events from the latest blocks, so the syncer will rescan previous `options.safe_rescan_every_n_block * 2` blocks every `options.safe_rescan_every_n_block` block. Also use `options.rpc_url` as array of urls so if the first one fails - it will try to use the second one and so on.
 
 ## Contributing
 

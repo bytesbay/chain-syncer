@@ -1,4 +1,5 @@
 import { ChainSyncer } from ".";
+import * as Ethers from "ethers";
 
 export const scannerTick = async function(
   this: ChainSyncer,
@@ -9,9 +10,14 @@ export const scannerTick = async function(
   this._is_scanner_busy = true;
 
   try {
-    max_block = await this.ethers_provider.getBlockNumber();
+    max_block = await this.rpcHandle(async (rpc_url) => {
+      const provider = new Ethers.JsonRpcProvider(rpc_url, undefined, {
+        polling: false
+      });
+      return await provider.getBlockNumber();
+    }, false);
   } catch (error) {
-    this.logger.error('Error while fetching max_block, will try again anyway:', error);
+    this.logger.error('Error while fetchaing max_block, will try again anyway:', error);
   }
 
   if(max_block >= 0) {

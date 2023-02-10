@@ -5,7 +5,7 @@ import { deploy } from '../contract-deployer';
 import { ethers_provider } from '../ethers-init';
 import { IChainSyncerAdapter, IChainSyncerEventMetadata, IChainSyncerOptions, IChainSyncerSubscriber } from '@/types';
 
-const Utils = Ethers.utils;
+const Utils = Ethers;
 
 jest.setTimeout(30000);
 
@@ -33,35 +33,35 @@ describe('Chain-Syncer (mono mode)', () => {
   }
 
   const default_opts: IChainSyncerOptions = {
-    ethers_provider: ethers_provider,
+    rpc_url: ethers_provider._getConnection().url,
     mode: 'mono',
     tick_interval: 500,
     safe_rescan_every_n_block: 3,
     block_time: 500,
 
-    async contractsGetter(contract_name: string) {
+    async contractsResolver(contract_name: string) {
       const contracts: Record<string, Ethers.Contract> = {
         Items,
         Materials,
       };
 
+      const abis: Record<string, any[]> = {
+        Items: items_abi,
+        Materials: materials_abi,
+      };
+
       return {
-        ethers_contract: contracts[contract_name],
-        deploy_transaction_hash: contracts[contract_name].deployTransaction.hash
+        contract_abi: abis[contract_name],
+        start_block: await ethers_provider.getBlockNumber(),
+        address: await contracts[contract_name].getAddress(),
       };
     }
   };
 
-  /**
-   * @type {Ethers.Contract}
-   */
   let Items: Ethers.Contract;
-
-  /**
-   * @type {Ethers.Contract}
-   */
   let Materials: Ethers.Contract;
-
+  let items_abi: any[];
+  let materials_abi: any[];
 
   beforeEach(async () => {
 
@@ -73,6 +73,8 @@ describe('Chain-Syncer (mono mode)', () => {
 
     Items = contracts.Items;
     Materials = contracts.Materials;
+    items_abi = contracts.items_abi;
+    materials_abi = contracts.materials_abi;
 
     adapter = new InMemoryAdapter();
     syncer = new ChainSyncer(adapter, default_opts);
