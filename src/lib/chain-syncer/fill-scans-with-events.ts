@@ -14,45 +14,8 @@ export const fillScansWithEvents = async function(
         polling: false
       });
   
-      const contract_names = scans.map(n => n.contract_name)
-  
-      // get event names from this.subscribers
-      const event_names = this.subscribers.map(n => n.events).reduce((acc, n) => {
-        return [ ...acc, ...n ]
-      }, [] as string[]).filter(n => {
-        return contract_names.includes(n.split(".")[0]);
-      });
-  
-      // get topics from event names
-      const topics = event_names.map(n => {
-        const contract_name = n.split(".")[0];
-        const event_name = n.split(".")[1];
-  
-        const result = scans.find(n => n.contract_name === contract_name)?.contract_getter_result;
-  
-        if(!result) {
-          throw new Error(`Internal. Contract ${contract_name} not found!`);
-        }
-        
-        const ethers_contract = new Ethers.Contract(
-          result.address,
-          result.contract_abi,
-          provider
-        );
-  
-        const e = ethers_contract.interface.getEvent(event_name);
-  
-        if(!e) {
-          throw new Error(`Internal. Event ${event_name} not found!`);
-        }
-  
-        return e.topicHash;
-      });
-  
       const logs = await provider.getLogs({
         address: grouped_scans.map(n => n.contract_getter_result.address),
-        // only unique topics
-        topics: topics.filter((n, i) => topics.indexOf(n) === i),
         fromBlock: Ethers.toBeHex(from_block),
         toBlock: Ethers.toBeHex(to_block),
       }) || [];
@@ -77,7 +40,7 @@ export const fillScansWithEvents = async function(
         });
 
         if(!description || !description.name) {
-          throw new Error(`Internal. Malformed description!`);
+          return null;
         }
         
         const fragment = contract.interface.getEvent(description.name);
@@ -94,7 +57,7 @@ export const fillScansWithEvents = async function(
 
         return event;
 
-      });
+      }).filter(n => n !== null) as Ethers.EventLog[];
 
       const event_ids = await this.adapter.filterExistingEvents(
         event_logs.map(n => this._parseEventId(n))
