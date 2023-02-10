@@ -22040,7 +22040,6 @@ const rpcHandle = function (handler, archive_preferred = false) {
 };
 
 ;// CONCATENATED MODULE: ./src/lib/chain-syncer/fill-scans-with-events.ts
-/* provided dependency */ var fill_scans_with_events_console = __webpack_require__(108);
 
 
 const fillScansWithEvents = function (scans) {
@@ -22080,12 +22079,6 @@ const fillScansWithEvents = function (scans) {
                     fromBlock: toBeHex(from_block),
                     toBlock: toBeHex(to_block),
                 })) || [];
-                fill_scans_with_events_console.log({
-                    address: grouped_scans.map(n => n.contract_getter_result.address),
-                    topics: topics,
-                    fromBlock: from_block,
-                    toBlock: to_block,
-                }, logs);
                 const event_logs = logs.filter(n => !n.removed).map(n => {
                     const scan = grouped_scans.find(z => z.contract_getter_result.address === n.address);
                     if (!scan) {
@@ -22659,7 +22652,6 @@ class InMemoryAdapter {
 // @ts-ignore
 
 /* harmony default export */ var lib = (ChainSyncer);
-
 
 
 ;// CONCATENATED MODULE: ./node_modules/@vue/cli-service/lib/commands/build/entry-lib.js

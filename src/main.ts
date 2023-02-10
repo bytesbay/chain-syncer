@@ -1,7 +1,8 @@
-import { ChainSyncer, IChainSyncerEventMetadata, InMemoryAdapter, TChainSyncerEventArg } from './lib';
+import { IChainSyncerEventMetadata, TChainSyncerEventArg } from './types';
 import abi from '@/abis/BUSD.json';
 import * as Ethers from 'ethers';
 import { IChainSyncerContractsResolverResult } from './types';
+import ChainSyncer, { InMemoryAdapter } from './lib';
 
 const test = async () => {
 

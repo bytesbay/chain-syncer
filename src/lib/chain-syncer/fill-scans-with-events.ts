@@ -56,13 +56,6 @@ export const fillScansWithEvents = async function(
         fromBlock: Ethers.toBeHex(from_block),
         toBlock: Ethers.toBeHex(to_block),
       }) || [];
-
-      console.log({
-        address: grouped_scans.map(n => n.contract_getter_result.address),
-        topics: topics,
-        fromBlock: from_block,
-        toBlock: to_block,
-      }, logs);
   
       const event_logs = logs.filter(n => !n.removed).map(n => {
 

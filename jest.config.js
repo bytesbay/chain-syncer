@@ -1,16 +1,16 @@
 let testPathIgnorePatterns = [
   '/node_modules/', 
   '/dist/',
-  '__tests__/chain-syncer.test.js',
-  '__tests__/mono-mode.test.js',
+  '__tests__/chain-syncer.test.ts',
+  '__tests__/mono-mode.test.ts',
 ];
 
 if(process.env['INTERGRATION_TESTS']) {
   testPathIgnorePatterns = testPathIgnorePatterns
-    .filter(n => n !== '__tests__/chain-syncer.test.js')
-    .filter(n => n !== '__tests__/mono-mode.test.js');
+    .filter(n => n !== '__tests__/chain-syncer.test.ts')
+    .filter(n => n !== '__tests__/mono-mode.test.ts');
     
-  testPathIgnorePatterns.push('__tests__/in-memory-adapter.test.js');
+  testPathIgnorePatterns.push('__tests__/in-memory-adapter.test.ts');
 }
 
 module.exports = {
