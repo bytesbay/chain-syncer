@@ -5502,7 +5502,7 @@ const parseEvent = function (contract_name, event, block, tx) {
             return n.map(z => traverseParse(z));
         }
         else {
-            if (n._isBigNumber) {
+            if (typeof n === 'bigint') {
                 return n.toString();
             }
             else {
@@ -22471,6 +22471,7 @@ function toQueueEvent(event, subscriber) {
 }
 
 ;// CONCATENATED MODULE: ./src/lib/in-memory-adapter/index.ts
+/* provided dependency */ var in_memory_adapter_console = __webpack_require__(108);
 
 
 
@@ -22600,6 +22601,7 @@ class InMemoryAdapter {
     }
     saveEvents(_events, subscribers) {
         return __awaiter(this, void 0, void 0, function* () {
+            in_memory_adapter_console.log(_events);
             if (!_events.length) {
                 return;
             }

@@ -32,7 +32,7 @@ export const parseEvent = function(
       // @ts-ignore
       return n.map(z => traverseParse(z))
     } else {
-      if(n._isBigNumber) {
+      if(typeof n === 'bigint') {
         return n.toString();
       } else {
         return n;
