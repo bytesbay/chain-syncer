@@ -22049,33 +22049,8 @@ const fillScansWithEvents = function (scans) {
                 const provider = new JsonRpcProvider(rpc_url, undefined, {
                     polling: false
                 });
-                const contract_names = scans.map(n => n.contract_name);
-                // get event names from this.subscribers
-                const event_names = this.subscribers.map(n => n.events).reduce((acc, n) => {
-                    return [...acc, ...n];
-                }, []).filter(n => {
-                    return contract_names.includes(n.split(".")[0]);
-                });
-                // get topics from event names
-                const topics = event_names.map(n => {
-                    var _a;
-                    const contract_name = n.split(".")[0];
-                    const event_name = n.split(".")[1];
-                    const result = (_a = scans.find(n => n.contract_name === contract_name)) === null || _a === void 0 ? void 0 : _a.contract_getter_result;
-                    if (!result) {
-                        throw new Error(`Internal. Contract ${contract_name} not found!`);
-                    }
-                    const ethers_contract = new Contract(result.address, result.contract_abi, provider);
-                    const e = ethers_contract.interface.getEvent(event_name);
-                    if (!e) {
-                        throw new Error(`Internal. Event ${event_name} not found!`);
-                    }
-                    return e.topicHash;
-                });
                 const logs = (yield provider.getLogs({
                     address: grouped_scans.map(n => n.contract_getter_result.address),
-                    // only unique topics
-                    topics: topics.filter((n, i) => topics.indexOf(n) === i),
                     fromBlock: toBeHex(from_block),
                     toBlock: toBeHex(to_block),
                 })) || [];
@@ -22090,7 +22065,7 @@ const fillScansWithEvents = function (scans) {
                         data: n.data,
                     });
                     if (!description || !description.name) {
-                        throw new Error(`Internal. Malformed description!`);
+                        return null;
                     }
                     const fragment = contract.interface.getEvent(description.name);
                     if (!fragment) {
@@ -22098,7 +22073,7 @@ const fillScansWithEvents = function (scans) {
                     }
                     const event = new EventLog(n, contract.interface, fragment);
                     return event;
-                });
+                }).filter(n => n !== null);
                 const event_ids = yield this.adapter.filterExistingEvents(event_logs.map(n => this._parseEventId(n)));
                 return event_logs.filter(n => {
                     const id = this._parseEventId(n);
@@ -22652,6 +22627,7 @@ class InMemoryAdapter {
 // @ts-ignore
 
 /* harmony default export */ var lib = (ChainSyncer);
+
 
 
 ;// CONCATENATED MODULE: ./node_modules/@vue/cli-service/lib/commands/build/entry-lib.js
