@@ -9,11 +9,7 @@ export const fillScansWithEvents = async function(
 
   const aggregatedFilling = (scans: IChainSyncerScanResult[], from_block: number, to_block: number) => {
 
-    return this.rpcHandle(async (rpc_url: string) => {
-      const provider = new Ethers.JsonRpcProvider(rpc_url, undefined, {
-        polling: false
-      });
-  
+    return this.rpcHandle(async (provider) => {
       const logs = await provider.getLogs({
         address: grouped_scans.map(n => n.contract_getter_result.address),
         fromBlock: Ethers.toBeHex(from_block),

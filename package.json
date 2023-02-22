@@ -1,6 +1,6 @@
 {
   "name": "chain-syncer",
-  "version": "4.0.5",
+  "version": "4.0.6",
   "private": false,
   "description": "chain-syncer is a JS module which allows you to synchronize your app with any ethereum-compatible blockchain/contract state. Fast. Flexible. Reliable.",
   "author": "bytesbay",
@@ -14,10 +14,10 @@
   "main": "dist/chain-syncer.umd.min.js",
   "types": "dist/chain-syncer.d.ts",
   "dependencies": {
-    "ethers": "^6.0.0"
+    "ethers": "^6.0.5"
   },
-  "engines" : { 
-    "node" : ">=15.0.0"
+  "engines": {
+    "node": ">=15.0.0"
   },
   "devDependencies": {
     "@types/jest": "^27.0.1",

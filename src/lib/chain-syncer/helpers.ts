@@ -32,10 +32,7 @@ export async function _loadUsedBlocks(this: ChainSyncer, events: Ethers.EventLog
   return await Promise.all(
     used_blocks.map(n => {
 
-      return this.rpcHandle(async (rpc_url) => {
-        const provider = new Ethers.JsonRpcProvider(rpc_url, undefined, {
-          polling: false
-        });
+      return this.rpcHandle(async (provider) => {
         return await provider.getBlock(n).catch((err: any) => {
           this.logger.error(`getBlock error in ${n} block`);
           return null;
@@ -51,10 +48,7 @@ export async function _loadUsedTxs(this: ChainSyncer, events: Ethers.EventLog[])
 
   return await Promise.all(
     used_txs.map(n => {
-      return this.rpcHandle(async (rpc_url) => {
-        const provider = new Ethers.JsonRpcProvider(rpc_url, undefined, {
-          polling: false
-        });
+      return this.rpcHandle(async (provider) => {
         return await provider.getTransaction(n).catch((err: any) => {
           this.logger.error(`getTransaction error in ${n} tx`);
           return null;

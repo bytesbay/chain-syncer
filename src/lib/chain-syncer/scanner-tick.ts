@@ -5,13 +5,14 @@ export const scannerTick = async function(
   this: ChainSyncer,
 ) {
 
+  const chain_id = await this.rpcHandle(async (provider) => {
+    return await provider.getNetwork();
+  }, false);
+
   let max_block = 0;
 
   try {
-    max_block = await this.rpcHandle(async (rpc_url) => {
-      const provider = new Ethers.JsonRpcProvider(rpc_url, undefined, {
-        polling: false
-      });
+    max_block = await this.rpcHandle(async (provider) => {
       return await provider.getBlockNumber();
     }, false);
   } catch (error) {

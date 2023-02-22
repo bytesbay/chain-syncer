@@ -5661,8 +5661,115 @@ const scanContracts = function (max_block, opts = {}) {
     });
 };
 
+;// CONCATENATED MODULE: ./src/lib/chain-syncer/scanner-tick.ts
+
+const scannerTick = function () {
+    return __awaiter(this, void 0, void 0, function* () {
+        const chain_id = yield this.rpcHandle((provider) => __awaiter(this, void 0, void 0, function* () {
+            return yield provider.getNetwork();
+        }), false);
+        let max_block = 0;
+        try {
+            max_block = yield this.rpcHandle((provider) => __awaiter(this, void 0, void 0, function* () {
+                return yield provider.getBlockNumber();
+            }), false);
+        }
+        catch (error) {
+            this.logger.error('Error while fetchaing max_block, will try again anyway:', error);
+        }
+        if (max_block >= 0) {
+            try {
+                const { scans, events } = yield this.scanContracts(max_block);
+                if (!scans.length) {
+                    if (this.verbose) {
+                        this.logger.log(`[MAXBLOCK: ${max_block}] No scans executed`);
+                    }
+                }
+                else {
+                    yield this.saveLatestBlocks(scans);
+                    if (this.verbose) {
+                        this.logger.log(`[MAXBLOCK: ${max_block}] ${events.length} events added`);
+                    }
+                    yield this.safeRescan(max_block);
+                }
+            }
+            catch (error) {
+                this.logger.error('Error in scanner', error);
+            }
+        }
+    });
+};
+
+;// CONCATENATED MODULE: ./src/lib/chain-syncer/sync-subscribers.ts
+
+const syncSubscribers = function () {
+    return __awaiter(this, void 0, void 0, function* () {
+        this.subscribers = yield this.adapter.selectAllSubscribers();
+        const events = this.subscribers.reduce((acc, subscriber) => {
+            return acc.concat(subscriber.events);
+        }, []);
+        events.forEach(event => {
+            const { contract_name } = this._parseListenerName(event);
+            if (!this.used_contracts.includes(contract_name)) {
+                this.used_contracts.push(contract_name);
+            }
+        });
+    });
+};
+
+;// CONCATENATED MODULE: ./src/lib/chain-syncer/helpers.ts
+
+function _uniq(a) {
+    const seen = {};
+    return a.filter(function (item) {
+        return seen[item] ? false : (seen[item] = true);
+    });
+}
+function _parseListenerName(event) {
+    const exploded = event.split('.');
+    const contract_name = exploded[0];
+    const event_name = exploded[1];
+    if (!(contract_name || '').length || !(event_name || '').length) {
+        throw new Error('Invalid listener format! Must be ContractName.EventName');
+    }
+    return { contract_name, event_name };
+}
+function _parseEventId(event) {
+    return event.transactionHash + '_' + event.index;
+}
+function _loadUsedBlocks(events) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const used_blocks = this._uniq(events.map(n => n.blockNumber));
+        return yield Promise.all(used_blocks.map(n => {
+            return this.rpcHandle((provider) => __awaiter(this, void 0, void 0, function* () {
+                return yield provider.getBlock(n).catch((err) => {
+                    this.logger.error(`getBlock error in ${n} block`);
+                    return null;
+                });
+            }), false);
+        }).filter(n => n !== null)).then(res => res.filter(n => n !== null));
+    });
+}
+function _loadUsedTxs(events) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const used_txs = this._uniq(events.map(n => n.transactionHash));
+        return yield Promise.all(used_txs.map(n => {
+            return this.rpcHandle((provider) => __awaiter(this, void 0, void 0, function* () {
+                return yield provider.getTransaction(n).catch((err) => {
+                    this.logger.error(`getTransaction error in ${n} tx`);
+                    return null;
+                });
+            }), false);
+        }).filter(n => n !== null)).then(res => res.filter(n => n !== null));
+    });
+}
+
 ;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/_version.js
-const version = "6.0.2";
+/* Do NOT modify this file; see /src.ts/_admin/update-version.ts */
+/**
+ *  The current version of Ethers.
+ */
+const version = "6.0.5";
 //# sourceMappingURL=_version.js.map
 ;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/utils/properties.js
 /**
@@ -5839,7 +5946,7 @@ function makeError(message, code, info) {
     }
     properties_defineProperties(error, { code });
     if (info) {
-        properties_defineProperties(error, info);
+        Object.assign(error, info);
     }
     return error;
 }
@@ -6055,7 +6162,7 @@ function data_dataSlice(data, start, end) {
  */
 function stripZerosLeft(data) {
     let bytes = hexlify(data).substring(2);
-    while (bytes.substring(0, 2) == "00") {
+    while (bytes.startsWith("00")) {
         bytes = bytes.substring(2);
     }
     return "0x" + bytes;
@@ -6081,7 +6188,7 @@ function zeroPad(data, length, left) {
  *  Return the [[DataHexString]] of %%data%% padded on the **left**
  *  to %%length%% bytes.
  *
- *  If %%data%% already exceeds %%length%%, a [[BufferOverrun]] is
+ *  If %%data%% already exceeds %%length%%, a [[BufferOverrunError]] is
  *  thrown.
  *
  *  This pads data the same as **values** are in Solidity
@@ -6094,7 +6201,7 @@ function data_zeroPadValue(data, length) {
  *  Return the [[DataHexString]] of %%data%% padded on the **right**
  *  to %%length%% bytes.
  *
- *  If %%data%% already exceeds %%length%%, a [[BufferOverrun]] is
+ *  If %%data%% already exceeds %%length%%, a [[BufferOverrunError]] is
  *  thrown.
  *
  *  This pads data the same as **bytes** are in Solidity
@@ -6170,7 +6277,7 @@ function mask(_value, _bits) {
     return value & ((BN_1 << bits) - BN_1);
 }
 /**
- *  Gets a [[BigInt]] from %%value%%. If it is an invalid value for
+ *  Gets a BigInt from %%value%%. If it is an invalid value for
  *  a BigInt, then an ArgumentError will be thrown for %%name%%.
  */
 function getBigInt(value, name) {
@@ -6307,7 +6414,7 @@ function toBeArray(_value) {
  */
 function toQuantity(value) {
     let result = hexlify(isBytesLike(value) ? value : toBeArray(value)).substring(2);
-    while (result.substring(0, 1) === "0") {
+    while (result.startsWith("0")) {
         result = result.substring(1);
     }
     if (result === "") {
@@ -6428,12 +6535,14 @@ class Result extends Array {
      *  errors.
      */
     toArray() {
+        const result = [];
         this.forEach((item, index) => {
             if (item instanceof Error) {
                 throwError(`index ${index}`, item);
             }
+            result.push(item);
         });
-        return Array.of(this);
+        return result;
     }
     /**
      *  Returns the Result as an Object with each name-value pair.
@@ -6460,7 +6569,22 @@ class Result extends Array {
         if (start == null) {
             start = 0;
         }
+        if (start < 0) {
+            start += this.length;
+            if (start < 0) {
+                start = 0;
+            }
+        }
         if (end == null) {
+            end = this.length;
+        }
+        if (end < 0) {
+            end += this.length;
+            if (end < 0) {
+                end = 0;
+            }
+        }
+        if (end > this.length) {
             end = this.length;
         }
         const result = [], names = [];
@@ -7307,7 +7431,7 @@ function address_getAddress(address) {
     errors_assertArgument(typeof (address) === "string", "invalid address", "address", address);
     if (address.match(/^(0x)?[0-9a-fA-F]{40}$/)) {
         // Missing the 0x prefix
-        if (address.substring(0, 2) !== "0x") {
+        if (!address.startsWith("0x")) {
             address = "0x" + address;
         }
         const result = getChecksumAddress(address);
@@ -7416,7 +7540,7 @@ class Typed {
         return !!(this.type.match(/^u?int[0-9]+$/));
     }
     isData() {
-        return (this.type.substring(0, 5) === "bytes");
+        return this.type.startsWith("bytes");
     }
     isString() {
         return (this.type === "string");
@@ -7655,7 +7779,7 @@ function pack(writer, coders, values) {
         arrayValues = coders.map((coder) => {
             const name = coder.localName;
             errors_assert(name, "cannot encode object for signature with missing names", "INVALID_ARGUMENT", { argument: "values", info: { coder }, value: values });
-            errors_assert(unique[name], "cannot encode object for signature with duplicate names", "INVALID_ARGUMENT", { argument: "values", info: { coder }, value: values });
+            errors_assert(!unique[name], "cannot encode object for signature with duplicate names", "INVALID_ARGUMENT", { argument: "values", info: { coder }, value: values });
             unique[name] = true;
             return values[name];
         });
@@ -8000,7 +8124,21 @@ function replaceFunc(reason, offset, bytes, output, badCodepoint) {
     // Otherwise, process as if ignoring errors
     return ignoreFunc(reason, offset, bytes, output, badCodepoint);
 }
-// Common error handing strategies
+/**
+ *  A handful of popular, built-in UTF-8 error handling strategies.
+ *
+ *  **``"error"``** - throws on ANY illegal UTF-8 sequence or
+ *  non-canonical (overlong) codepoints (this is the default)
+ *
+ *  **``"ignore"``** - silently drops any illegal UTF-8 sequence
+ *  and accepts non-canonical (overlong) codepoints
+ *
+ *  **``"replace"``** - replace any illegal UTF-8 sequence with the
+ *  UTF-8 replacement character (i.e. `\ufffd`) and accepts
+ *  non-canonical (overlong) codepoints
+ *
+ *  @returns: Record<"error" | "ignore" | "replace", Utf8ErrorFunc>
+ */
 const Utf8ErrorFuncs = Object.freeze({
     error: errorFunc,
     ignore: ignoreFunc,
@@ -8147,7 +8285,7 @@ function _toUtf8String(codePoints) {
  *
  *  When %%onError%% function is specified, it is called on UTF-8
  *  errors allowing recovery using the [[Utf8ErrorFunc]] API.
- *  (default: [error](Utf8ErrorFuncs-error))
+ *  (default: [error](Utf8ErrorFuncs))
  */
 function toUtf8String(bytes, onError) {
     return _toUtf8String(getUtf8CodePoints(bytes, onError));
@@ -8269,7 +8407,7 @@ function id(value) {
 /**
  *  About frgaments...
  *
- *  @_subsection api/abi/abi-coder:Fragments
+ *  @_subsection api/abi/abi-coder:Fragments  [about-fragments]
  */
 
 
@@ -8623,26 +8761,25 @@ class ParamType {
     /**
      *  True if the parameters is indexed.
      *
-     *  For non-indexable types (see [[ParamType_isIndexable]]) this
-     *  is ``null``.
+     *  For non-indexable types this is ``null``.
      */
     indexed;
     /**
      *  The components for the tuple.
      *
-     *  For non-tuple types (see [[ParamType_isTuple]]) this is ``null``.
+     *  For non-tuple types this is ``null``.
      */
     components;
     /**
      *  The array length, or ``-1`` for dynamic-lengthed arrays.
      *
-     *  For non-array types (see [[ParamType_isArray]]) this is ``null``.
+     *  For non-array types this is ``null``.
      */
     arrayLength;
     /**
      *  The type of each child in the array.
      *
-     *  For non-array types (see [[ParamType_isArray]]) this is ``null``.
+     *  For non-array types this is ``null``.
      */
     arrayChildren;
     /**
@@ -8937,7 +9074,7 @@ class ParamType {
             });
             return new ParamType(fragments_guard, name || "", type, "array", indexed, null, arrayLength, arrayChildren);
         }
-        if (type === "tuple" || type.substring(0, 5) === "tuple(" || type[0] === "(") {
+        if (type === "tuple" || type.startsWith("tuple(" /* fix: ) */) || type.startsWith("(" /* fix: ) */)) {
             const comps = (obj.components != null) ? obj.components.map((c) => ParamType.from(c)) : null;
             const tuple = new ParamType(fragments_guard, name || "", type, "tuple", indexed, comps, null, null);
             // @TODO: use lexer to validate and normalize type
@@ -9458,7 +9595,6 @@ class StructFragment extends NamedFragment {
 }
 //# sourceMappingURL=fragments.js.map
 ;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/abi/abi-coder.js
-/* provided dependency */ var console = __webpack_require__(108);
 /**
  *  When sending values to or receiving values from a [[Contract]], the
  *  data is generally encoded using the [ABI standard](solc-abi-standard).
@@ -9510,7 +9646,11 @@ function getBuiltinCallException(action, tx, data, abiCoder) {
         message = "execution reverted";
         const bytes = data_getBytes(data);
         data = hexlify(data);
-        if (bytes.length % 32 !== 4) {
+        if (bytes.length === 0) {
+            message += " (no data present; likely require(false) occurred";
+            reason = "require(false)";
+        }
+        else if (bytes.length % 32 !== 4) {
             message += " (could not decode reason; invalid data length)";
         }
         else if (hexlify(bytes.slice(0, 4)) === "0x08c379a0") {
@@ -9525,8 +9665,7 @@ function getBuiltinCallException(action, tx, data, abiCoder) {
                 message += `: ${JSON.stringify(reason)}`;
             }
             catch (error) {
-                console.log(error);
-                message += " (could not decode reason; invalid data)";
+                message += " (could not decode reason; invalid string data)";
             }
         }
         else if (hexlify(bytes.slice(0, 4)) === "0x4e487b71") {
@@ -9542,8 +9681,7 @@ function getBuiltinCallException(action, tx, data, abiCoder) {
                 message += `: ${reason}`;
             }
             catch (error) {
-                console.log(error);
-                message += " (could not decode panic reason)";
+                message += " (could not decode panic code)";
             }
         }
         else {
@@ -9648,7 +9786,7 @@ class AbiCoder {
         return defaultCoder;
     }
     /**
-     *  Returns an ethers-compatible [[CALL_EXCEPTION]] Error for the given
+     *  Returns an ethers-compatible [[CallExceptionError]] Error for the given
      *  result %%data%% for the [[CallExceptionAction]] %%action%% against
      *  the Transaction %%tx%%.
      */
@@ -11050,7 +11188,7 @@ function wait(delay) {
 const ZeroHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
 //# sourceMappingURL=hashes.js.map
 ;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/abi/interface.js
-/* provided dependency */ var interface_console = __webpack_require__(108);
+/* provided dependency */ var console = __webpack_require__(108);
 /**
  *  About Interface
  *
@@ -11202,7 +11340,7 @@ class Interface {
                 frags.push(Fragment.from(a));
             }
             catch (error) {
-                interface_console.log("EE", error);
+                console.log("EE", error);
             }
         }
         properties_defineProperties(this, {
@@ -11217,7 +11355,7 @@ class Interface {
             switch (fragment.type) {
                 case "constructor":
                     if (this.deploy) {
-                        interface_console.log("duplicate definition - constructor");
+                        console.log("duplicate definition - constructor");
                         return;
                     }
                     //checkNames(fragment, "input", fragment.inputs);
@@ -11615,7 +11753,7 @@ getSelector(fragment: ErrorFragment | FunctionFragment): string {
      *  specified error (see [[getError]] for valid values for
      *  %%key%%).
      *
-     *  Most developers should prefer the [[parseResult]] method instead,
+     *  Most developers should prefer the [[parseCallResult]] method instead,
      *  which will automatically detect a ``CALL_EXCEPTION`` and throw the
      *  corresponding error.
      */
@@ -11685,7 +11823,7 @@ getSelector(fragment: ErrorFragment | FunctionFragment): string {
      *  specified function (see [[getFunction]] for valid values for
      *  %%key%%).
      *
-     *  Most developers should prefer the [[parseResult]] method instead,
+     *  Most developers should prefer the [[parseCallResult]] method instead,
      *  which will automatically detect a ``CALL_EXCEPTION`` and throw the
      *  corresponding error.
      */
@@ -11715,16 +11853,15 @@ getSelector(fragment: ErrorFragment | FunctionFragment): string {
         const data = data_getBytes(_data, "data");
         const error = AbiCoder.getBuiltinCallException("call", tx, data);
         // Not a built-in error; try finding a custom error
-        if (!error.message.match(/could not decode/)) {
+        const customPrefix = "execution reverted (unknown custom error)";
+        if (error.message.startsWith(customPrefix)) {
             const selector = hexlify(data.slice(0, 4));
-            error.message = "execution reverted (unknown custom error)";
             const ef = this.getError(selector);
             if (ef) {
                 try {
+                    const args = this.#abiCoder.decode(ef.inputs, data.slice(4));
                     error.revert = {
-                        name: ef.name,
-                        signature: ef.format(),
-                        args: this.#abiCoder.decode(ef.inputs, data.slice(4))
+                        name: ef.name, signature: ef.format(), args
                     };
                     error.reason = error.revert.signature;
                     error.message = `execution reverted: ${error.reason}`;
@@ -12119,7 +12256,7 @@ function copyRequest(req) {
     if (req.data) {
         result.data = hexlify(req.data);
     }
-    const bigIntKeys = "chainId,gasLimit,gasPrice,maxFeePerGas, maxPriorityFeePerGas,value".split(/,/);
+    const bigIntKeys = "chainId,gasLimit,gasPrice,maxFeePerGas,maxPriorityFeePerGas,value".split(/,/);
     for (const key of bigIntKeys) {
         if (!(key in req) || req[key] == null) {
             continue;
@@ -13432,7 +13569,7 @@ async function _emit(contract, event, args, payloadFunc) {
     }
     const count = sub.listeners.length;
     sub.listeners = sub.listeners.filter(({ listener, once }) => {
-        const passArgs = args.slice();
+        const passArgs = Array.from(args);
         if (payloadFunc) {
             passArgs.push(payloadFunc(once ? null : listener));
         }
@@ -14805,6 +14942,9 @@ function toUint256(value) {
 }
 /**
  *  A Signature  @TODO
+ *
+ *
+ *  @_docloc: api/crypto:Signing
  */
 class Signature {
     #r;
@@ -16999,6 +17139,11 @@ Object.freeze(computeHmac);
 //# sourceMappingURL=hmac.js.map
 ;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/crypto/signing-key.js
 /* provided dependency */ var signing_key_console = __webpack_require__(108);
+/**
+ *  Add details about signing here.
+ *
+ *  @_subsection: api/crypto:Signing  [about-signing]
+ */
 
 
 
@@ -18779,7 +18924,7 @@ const _formatTransactionReceipt = object({
     cumulativeGasUsed: getBigInt,
     effectiveGasPrice: allowNull(getBigInt),
     status: allowNull(getNumber),
-    type: getNumber
+    type: allowNull(getNumber, 0)
 }, {
     effectiveGasPrice: ["gasPrice"],
     hash: ["transactionHash"],
@@ -20218,14 +20363,23 @@ class AbstractProvider {
                 "function name(bytes32) view returns (string)"
             ], this);
             const name = await resolverContract.name(node);
+            // Failed forward resolution
             const check = await this.resolveName(name);
             if (check !== address) {
-                abstract_provider_console.log("FAIL", address, check);
+                return null;
             }
             return name;
         }
         catch (error) {
-            abstract_provider_console.log("TEMP", error);
+            // No data was returned from the resolver
+            if (isError(error, "BAD_DATA") && error.value === "0x") {
+                return null;
+            }
+            // Something reerted
+            if (isError(error, "CALL_EXCEPTION")) {
+                return null;
+            }
+            throw error;
         }
         return null;
     }
@@ -20875,6 +21029,7 @@ class VoidSigner extends (/* unused pure expression or super */ null && (Abstrac
 ;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/providers/subscriber-filterid.js
 /* provided dependency */ var subscriber_filterid_console = __webpack_require__(108);
 
+
 function subscriber_filterid_copy(obj) {
     return JSON.parse(JSON.stringify(obj));
 }
@@ -20914,11 +21069,24 @@ class FilterIdSubscriber {
     }
     async #poll(blockNumber) {
         try {
+            // Subscribe if necessary
             if (this.#filterIdPromise == null) {
                 this.#filterIdPromise = this._subscribe(this.#provider);
             }
-            const filterId = await this.#filterIdPromise;
+            // Get the Filter ID
+            let filterId = null;
+            try {
+                filterId = await this.#filterIdPromise;
+            }
+            catch (error) {
+                if (!isError(error, "UNSUPPORTED_OPERATION") || error.operation !== "eth_newFilter") {
+                    throw error;
+                }
+            }
+            // The backend does not support Filter ID; downgrade to
+            // polling
             if (filterId == null) {
+                this.#filterIdPromise = null;
                 this.#provider._recoverSubscriber(this, this._recover(this.#provider));
                 return;
             }
@@ -21023,6 +21191,7 @@ class FilterIdPendingSubscriber extends FilterIdSubscriber {
 // @TODO:
 // - Add the batching API
 // https://playground.open-rpc.org/?schemaUrl=https://raw.githubusercontent.com/ethereum/eth1.0-apis/assembled-spec/openrpc.json&uiSchema%5BappBar%5D%5Bui:splitView%5D=true&uiSchema%5BappBar%5D%5Bui:input%5D=false&uiSchema%5BappBar%5D%5Bui:examplesDropdown%5D=false
+
 
 
 
@@ -21436,6 +21605,9 @@ class JsonRpcApiProvider extends AbstractProvider {
             return new FilterIdPendingSubscriber(this);
         }
         if (sub.type === "event") {
+            if (this._getOption("polling")) {
+                return new PollingEventSubscriber(this, sub.filter);
+            }
             return new FilterIdEventSubscriber(this, sub.filter);
         }
         // Orphaned Logs are handled automatically, by the filter, since
@@ -21591,74 +21763,6 @@ class JsonRpcApiProvider extends AbstractProvider {
             const e = AbiCoder.getBuiltinCallException((method === "eth_call") ? "call" : "estimateGas", (payload.params[0]), (result ? result.data : null));
             e.info = { error, payload };
             return e;
-            /*
-                        let message = "missing revert data during JSON-RPC call";
-            
-                        const action = <"call" | "estimateGas" | "unknown">(({ eth_call: "call", eth_estimateGas: "estimateGas" })[method] || "unknown");
-                        let data: null | string = null;
-                        let reason: null | string = null;
-                        const transaction = <{ from: string, to: string, data: string }>((<any>payload).params[0]);
-                        const invocation = null;
-                        let revert: null | { signature: string, name: string, args: Array<any> } = null;
-            
-                        if (result) {
-                            // @TODO: Extract errorSignature, errorName, errorArgs, reason if
-                            //        it is Error(string) or Panic(uint25)
-                            message = "execution reverted during JSON-RPC call";
-                            data = result.data;
-            
-                            let bytes = getBytes(data);
-                            if (bytes.length % 32 !== 4) {
-                                message += " (could not parse reason; invalid data length)";
-            
-                            } else if (data.substring(0, 10) === "0x08c379a0") {
-                                // Error(string)
-                                try {
-                                    if (bytes.length < 68) { throw new Error("bad length"); }
-                                    bytes = bytes.slice(4);
-                                    const pointer = getNumber(hexlify(bytes.slice(0, 32)));
-                                    bytes = bytes.slice(pointer);
-                                    if (bytes.length < 32) { throw new Error("overrun"); }
-                                    const length = getNumber(hexlify(bytes.slice(0, 32)));
-                                    bytes = bytes.slice(32);
-                                    if (bytes.length < length) { throw new Error("overrun"); }
-                                    reason = toUtf8String(bytes.slice(0, length));
-                                    revert = {
-                                        signature: "Error(string)",
-                                        name: "Error",
-                                        args: [ reason ]
-                                    };
-                                    message += `: ${ JSON.stringify(reason) }`;
-            
-                                } catch (error) {
-                                    console.log(error);
-                                    message += " (could not parse reason; invalid data length)";
-                                }
-            
-                            } else if (data.substring(0, 10) === "0x4e487b71") {
-                                // Panic(uint256)
-                                try {
-                                    if (bytes.length !== 36) { throw new Error("bad length"); }
-                                    const arg = getNumber(hexlify(bytes.slice(4)));
-                                    revert = {
-                                        signature: "Panic(uint256)",
-                                        name: "Panic",
-                                        args: [ arg ]
-                                    };
-                                    reason = `Panic due to ${ PanicReasons.get(Number(arg)) || "UNKNOWN" }(${ arg })`;
-                                    message += `: ${ reason }`;
-                                } catch (error) {
-                                    console.log(error);
-                                    message += " (could not parse panic reason)";
-                                }
-                            }
-                        }
-            
-                        return makeError(message, "CALL_EXCEPTION", {
-                            action, data, reason, transaction, invocation, revert,
-                            info: { payload, error }
-                        });
-                        */
         }
         // Only estimateGas and call can return arbitrary contract-defined text, so now we
         // we can process text safely.
@@ -21683,7 +21787,7 @@ class JsonRpcApiProvider extends AbstractProvider {
             const transaction = (payload.params[0]);
             if (message.match(/insufficient funds|base fee exceeds gas limit/i)) {
                 return makeError("insufficient funds for intrinsic transaction cost", "INSUFFICIENT_FUNDS", {
-                    transaction
+                    transaction, info: { error }
                 });
             }
             if (message.match(/nonce/i) && message.match(/too low/i)) {
@@ -21701,7 +21805,7 @@ class JsonRpcApiProvider extends AbstractProvider {
         }
         if (message.match(/the method .* does not exist/i)) {
             return makeError("unsupported operation", "UNSUPPORTED_OPERATION", {
-                operation: payload.method
+                operation: payload.method, info: { error }
             });
         }
         return makeError("could not coalesce error", "UNKNOWN_ERROR", { error });
@@ -21901,119 +22005,10 @@ function spelunkMessage(value) {
     return result;
 }
 //# sourceMappingURL=provider-jsonrpc.js.map
-;// CONCATENATED MODULE: ./src/lib/chain-syncer/scanner-tick.ts
-
-
-const scannerTick = function () {
-    return __awaiter(this, void 0, void 0, function* () {
-        let max_block = 0;
-        try {
-            max_block = yield this.rpcHandle((rpc_url) => __awaiter(this, void 0, void 0, function* () {
-                const provider = new JsonRpcProvider(rpc_url, undefined, {
-                    polling: false
-                });
-                return yield provider.getBlockNumber();
-            }), false);
-        }
-        catch (error) {
-            this.logger.error('Error while fetchaing max_block, will try again anyway:', error);
-        }
-        if (max_block >= 0) {
-            try {
-                const { scans, events } = yield this.scanContracts(max_block);
-                if (!scans.length) {
-                    if (this.verbose) {
-                        this.logger.log(`[MAXBLOCK: ${max_block}] No scans executed`);
-                    }
-                }
-                else {
-                    yield this.saveLatestBlocks(scans);
-                    if (this.verbose) {
-                        this.logger.log(`[MAXBLOCK: ${max_block}] ${events.length} events added`);
-                    }
-                    yield this.safeRescan(max_block);
-                }
-            }
-            catch (error) {
-                this.logger.error('Error in scanner', error);
-            }
-        }
-    });
-};
-
-;// CONCATENATED MODULE: ./src/lib/chain-syncer/sync-subscribers.ts
-
-const syncSubscribers = function () {
-    return __awaiter(this, void 0, void 0, function* () {
-        this.subscribers = yield this.adapter.selectAllSubscribers();
-        const events = this.subscribers.reduce((acc, subscriber) => {
-            return acc.concat(subscriber.events);
-        }, []);
-        events.forEach(event => {
-            const { contract_name } = this._parseListenerName(event);
-            if (!this.used_contracts.includes(contract_name)) {
-                this.used_contracts.push(contract_name);
-            }
-        });
-    });
-};
-
-;// CONCATENATED MODULE: ./src/lib/chain-syncer/helpers.ts
-
-
-function _uniq(a) {
-    const seen = {};
-    return a.filter(function (item) {
-        return seen[item] ? false : (seen[item] = true);
-    });
-}
-function _parseListenerName(event) {
-    const exploded = event.split('.');
-    const contract_name = exploded[0];
-    const event_name = exploded[1];
-    if (!(contract_name || '').length || !(event_name || '').length) {
-        throw new Error('Invalid listener format! Must be ContractName.EventName');
-    }
-    return { contract_name, event_name };
-}
-function _parseEventId(event) {
-    return event.transactionHash + '_' + event.index;
-}
-function _loadUsedBlocks(events) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const used_blocks = this._uniq(events.map(n => n.blockNumber));
-        return yield Promise.all(used_blocks.map(n => {
-            return this.rpcHandle((rpc_url) => __awaiter(this, void 0, void 0, function* () {
-                const provider = new JsonRpcProvider(rpc_url, undefined, {
-                    polling: false
-                });
-                return yield provider.getBlock(n).catch((err) => {
-                    this.logger.error(`getBlock error in ${n} block`);
-                    return null;
-                });
-            }), false);
-        }).filter(n => n !== null)).then(res => res.filter(n => n !== null));
-    });
-}
-function _loadUsedTxs(events) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const used_txs = this._uniq(events.map(n => n.transactionHash));
-        return yield Promise.all(used_txs.map(n => {
-            return this.rpcHandle((rpc_url) => __awaiter(this, void 0, void 0, function* () {
-                const provider = new JsonRpcProvider(rpc_url, undefined, {
-                    polling: false
-                });
-                return yield provider.getTransaction(n).catch((err) => {
-                    this.logger.error(`getTransaction error in ${n} tx`);
-                    return null;
-                });
-            }), false);
-        }).filter(n => n !== null)).then(res => res.filter(n => n !== null));
-    });
-}
-
 ;// CONCATENATED MODULE: ./src/lib/chain-syncer/rpc-handle.ts
 
+
+const cached_providers = {};
 const rpcHandle = function (handler, archive_preferred = false) {
     return __awaiter(this, void 0, void 0, function* () {
         if (archive_preferred && !this.archive_rpc_url.length) {
@@ -22024,7 +22019,12 @@ const rpcHandle = function (handler, archive_preferred = false) {
         let handler_res;
         for (const rpc_url of rpc_urls) {
             try {
-                handler_res = yield handler(rpc_url);
+                if (!cached_providers[rpc_url]) {
+                    cached_providers[rpc_url] = new JsonRpcProvider(rpc_url, undefined, {
+                        polling: false
+                    });
+                }
+                handler_res = yield handler(cached_providers[rpc_url]);
                 break;
             }
             catch (error) {
@@ -22045,10 +22045,7 @@ const rpcHandle = function (handler, archive_preferred = false) {
 const fillScansWithEvents = function (scans) {
     return __awaiter(this, void 0, void 0, function* () {
         const aggregatedFilling = (scans, from_block, to_block) => {
-            return this.rpcHandle((rpc_url) => __awaiter(this, void 0, void 0, function* () {
-                const provider = new JsonRpcProvider(rpc_url, undefined, {
-                    polling: false
-                });
+            return this.rpcHandle((provider) => __awaiter(this, void 0, void 0, function* () {
                 const logs = (yield provider.getLogs({
                     address: grouped_scans.map(n => n.contract_getter_result.address),
                     fromBlock: toBeHex(from_block),

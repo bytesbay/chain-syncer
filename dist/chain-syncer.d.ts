@@ -40,7 +40,7 @@ declare module 'chain-syncer/lib/chain-syncer' {
         safeRescan: (this: ChainSyncer, max_block: number) => Promise<void>;
         processingTick: (this: ChainSyncer) => Promise<void>;
         processSubscriberEvents: (this: ChainSyncer, subscriber: string) => Promise<void>;
-        rpcHandle: <T>(this: ChainSyncer, handler: (rpc_url: string) => Promise<T>, archive_preferred?: boolean) => Promise<T>;
+        rpcHandle: <T>(this: ChainSyncer, handler: (rpc_provider: Ethers.JsonRpcProvider) => Promise<T>, archive_preferred?: boolean) => Promise<T>;
         fillScansWithEvents: (this: ChainSyncer, scans: import("@/types").IChainSyncerScanResult[]) => Promise<void>;
         _uniq: typeof _uniq;
         _parseListenerName: typeof _parseListenerName;

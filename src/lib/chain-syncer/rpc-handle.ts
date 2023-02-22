@@ -1,10 +1,13 @@
 import { IChainSyncerEvent, IChainSyncerScanResult } from "@/types";
 import * as Ethers from "ethers";
+import { JsonRpcProvider } from "ethers";
 import { ChainSyncer } from ".";
+
+const cached_providers: Record<string, JsonRpcProvider> = {};
 
 export const rpcHandle = async function<T>(
   this: ChainSyncer,
-  handler: (rpc_url: string) => Promise<T>,
+  handler: (rpc_provider: JsonRpcProvider) => Promise<T>,
   archive_preferred = false
 ): Promise<T> {
  
@@ -20,7 +23,14 @@ export const rpcHandle = async function<T>(
 
   for (const rpc_url of rpc_urls) {
     try {
-      handler_res = await handler(rpc_url);
+
+      if(!cached_providers[rpc_url]) {
+        cached_providers[rpc_url] = new Ethers.JsonRpcProvider(rpc_url, undefined, {
+          polling: false
+        });
+      }
+
+      handler_res = await handler(cached_providers[rpc_url]);
       break;
     } catch (error) {
       index++;
