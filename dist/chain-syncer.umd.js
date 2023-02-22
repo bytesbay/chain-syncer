@@ -5572,15 +5572,10 @@ const processSubscriberEvents = function (subscriber) {
 const processingTick = function () {
     return __awaiter(this, void 0, void 0, function* () {
         const proms = [];
-        this._is_processor_busy = true;
         for (const subs of this.subscribers) {
             proms.push(this.processSubscriberEvents(subs.name).catch(() => { }));
         }
         yield Promise.all(proms);
-        this._is_processor_busy = false;
-        if (this._is_started) {
-            setTimeout(() => this.processingTick(), this.tick_interval);
-        }
     });
 };
 
@@ -21912,7 +21907,6 @@ function spelunkMessage(value) {
 const scannerTick = function () {
     return __awaiter(this, void 0, void 0, function* () {
         let max_block = 0;
-        this._is_scanner_busy = true;
         try {
             max_block = yield this.rpcHandle((rpc_url) => __awaiter(this, void 0, void 0, function* () {
                 const provider = new JsonRpcProvider(rpc_url, undefined, {
@@ -21943,10 +21937,6 @@ const scannerTick = function () {
             catch (error) {
                 this.logger.error('Error in scanner', error);
             }
-        }
-        this._is_scanner_busy = false;
-        if (this._is_started) {
-            setTimeout(() => this.scannerTick(), this.block_time * 1.5);
         }
     });
 };
@@ -22422,6 +22412,26 @@ class ChainSyncer {
         this.safe_rescans_to_repeat = safe_rescans_to_repeat;
         this.logger = logger;
     }
+    scannerLoop() {
+        return __awaiter(this, void 0, void 0, function* () {
+            while (this._is_started) {
+                this._is_scanner_busy = true;
+                yield this.scannerTick();
+                yield new Promise(resolve => setTimeout(() => resolve, this.block_time * 1.5));
+                this._is_scanner_busy = false;
+            }
+        });
+    }
+    processingLoop() {
+        return __awaiter(this, void 0, void 0, function* () {
+            while (this._is_started) {
+                this._is_processor_busy = true;
+                yield this.processingTick();
+                yield new Promise(resolve => setTimeout(() => resolve, this.tick_interval));
+                this._is_processor_busy = false;
+            }
+        });
+    }
     start() {
         return __awaiter(this, void 0, void 0, function* () {
             if (this._is_started) {
@@ -22431,11 +22441,11 @@ class ChainSyncer {
             if (this.mode === 'mono') {
                 yield this.updateSubscriber('mono', Object.keys(this.listeners));
             }
-            this.scannerTick();
-            if (this.mode === 'mono') {
-                this.processingTick();
-            }
             this._is_started = true;
+            this.scannerLoop();
+            if (this.mode === 'mono') {
+                this.processingLoop();
+            }
         });
     }
     stop() {

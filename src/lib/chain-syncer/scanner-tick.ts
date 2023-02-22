@@ -7,8 +7,6 @@ export const scannerTick = async function(
 
   let max_block = 0;
 
-  this._is_scanner_busy = true;
-
   try {
     max_block = await this.rpcHandle(async (rpc_url) => {
       const provider = new Ethers.JsonRpcProvider(rpc_url, undefined, {
@@ -44,11 +42,5 @@ export const scannerTick = async function(
     } catch (error) {
       this.logger.error('Error in scanner', error);
     }
-  }
-
-  this._is_scanner_busy = false;
-
-  if(this._is_started) {
-    setTimeout(() => this.scannerTick(), this.block_time * 1.5)
   }
 }

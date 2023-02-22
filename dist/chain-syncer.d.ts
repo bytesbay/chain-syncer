@@ -8,6 +8,103 @@ declare module 'chain-syncer' {
     import { InMemoryAdapter } from 'chain-syncer/lib/in-memory-adapter';
     export default ChainSyncer;
     export { ChainSyncer, InMemoryAdapter };
+    export * from 'chain-syncer/types';
+}
+
+declare module 'chain-syncer/lib/chain-syncer' {
+    import { IChainSyncerAdapter, TChainSyncerContractsResolverHook, IChainSyncerLogger, IChainSyncerOptions, IChainSyncerListener, IChainSyncerSubscriber } from "@/types";
+    import { ethers as Ethers } from "ethers";
+    import { _loadUsedBlocks, _loadUsedTxs, _parseEventId, _parseListenerName, _uniq } from "chain-syncer/lib/chain-syncer/helpers";
+    export class ChainSyncer {
+        listeners: Record<string, IChainSyncerListener>;
+        used_contracts: string[];
+        subscribers: IChainSyncerSubscriber[];
+        _next_safe_at: number;
+        _is_started: boolean;
+        _is_scanner_busy: boolean;
+        _is_processor_busy: boolean;
+        _current_max_block: number;
+        addEvents: (this: ChainSyncer, scans: import("@/types").IChainSyncerScanResult[]) => Promise<import("@/types").IChainSyncerEvent[]>;
+        parseEvent: (this: ChainSyncer, contract_name: string, event: Ethers.EventLog, block: Ethers.Block, tx: Ethers.TransactionResponse) => import("@/types").IChainSyncerEvent;
+        resolveBlockRanges: (this: ChainSyncer, contract_name: string, max_block: number, opts?: import("@/types").IChainSyncerGetContractsEventsOptions) => Promise<import("@/types").IChainSyncerScanResult>;
+        saveLatestBlocks: (this: ChainSyncer, scans: import("@/types").IChainSyncerScanResult[]) => Promise<void>;
+        scanContracts: (this: ChainSyncer, max_block: number, opts?: import("@/types").IChainSyncerGetContractsEventsOptions) => Promise<{
+            scans: import("@/types").IChainSyncerScanResult[];
+            events: import("@/types").IChainSyncerEvent[];
+        }>;
+        scanContractBlocks: (this: ChainSyncer, contract_getter_result: import("@/types").IChainSyncerContractsResolverResult, contract_name: string, from_block: number, to_block: number) => Promise<import("@/types").IChainSyncerScanResult>;
+        on: (this: ChainSyncer, event: string, listener: import("@/types").TChainSyncerListenerHook) => Promise<void>;
+        updateSubscriber: (this: ChainSyncer, subscriber: string, events: string[]) => Promise<void>;
+        syncSubscribers: (this: ChainSyncer) => Promise<void>;
+        scannerTick: (this: ChainSyncer) => Promise<void>;
+        safeRescan: (this: ChainSyncer, max_block: number) => Promise<void>;
+        processingTick: (this: ChainSyncer) => Promise<void>;
+        processSubscriberEvents: (this: ChainSyncer, subscriber: string) => Promise<void>;
+        rpcHandle: <T>(this: ChainSyncer, handler: (rpc_url: string) => Promise<T>, archive_preferred?: boolean) => Promise<T>;
+        fillScansWithEvents: (this: ChainSyncer, scans: import("@/types").IChainSyncerScanResult[]) => Promise<void>;
+        _uniq: typeof _uniq;
+        _parseListenerName: typeof _parseListenerName;
+        _parseEventId: typeof _parseEventId;
+        _loadUsedBlocks: typeof _loadUsedBlocks;
+        _loadUsedTxs: typeof _loadUsedTxs;
+        query_block_limit: number;
+        block_time: number;
+        tick_interval: number;
+        adapter: IChainSyncerAdapter;
+        mode: string;
+        rpc_url: string[];
+        contractsResolver: TChainSyncerContractsResolverHook;
+        verbose: boolean;
+        safe_rescan_every_n_block: number;
+        safe_rescans_to_repeat: number;
+        logger: IChainSyncerLogger;
+        archive_rpc_url: string[];
+        archive_rpc_activator_edge: number;
+        constructor(adapter: IChainSyncerAdapter, opts: IChainSyncerOptions);
+        scannerLoop(): Promise<void>;
+        processingLoop(): Promise<void>;
+        start(): Promise<void>;
+        stop(): Promise<void>;
+        selectPendingEvents(subscriber: string): Promise<import("@/types").IChainSyncerEvent[]>;
+        markEventsAsProcessed(subscriber: string, event_ids: string[]): Promise<void>;
+    }
+}
+
+declare module 'chain-syncer/lib/in-memory-adapter' {
+    import { IChainSyncerAdapter, IChainSyncerEvent, IChainSyncerSubscriber } from "@/types";
+    import { IEvent } from "chain-syncer/lib/in-memory-adapter/event";
+    import { IQueueEvent } from "chain-syncer/lib/in-memory-adapter/queue-event";
+    interface ISubscriber {
+        name: string;
+        events: string[];
+        added_at: Record<string, number>;
+    }
+    export class InMemoryAdapter implements IChainSyncerAdapter {
+        latest_blocks: Record<string, number>;
+        events: IEvent[];
+        events_queue: IQueueEvent[];
+        subscribers: Record<string, ISubscriber>;
+        _is_chainsyncer_adapter: boolean;
+        constructor();
+        getLatestScannedBlockNumber(contract_name: string): Promise<number>;
+        removeQueue(subscriber: string, events: string[]): Promise<void>;
+        addUnprocessedEventsToQueue(subscriber: string, events: string[]): Promise<void>;
+        selectAllSubscribers(): Promise<ISubscriber[]>;
+        updateSubscriber(subscriber: string, events: string[]): Promise<{
+            events_added: string[];
+            events_removed: string[];
+        }>;
+        saveLatestScannedBlockNumber(contract_name: string, block_number: number): Promise<void>;
+        selectAllUnprocessedEventsBySubscriber(subscriber: string): Promise<IEvent[]>;
+        setEventProcessedForSubscriber(id: string, subscriber: string): Promise<void>;
+        filterExistingEvents(ids: string[]): Promise<string[]>;
+        saveEvents(_events: IChainSyncerEvent[], subscribers: IChainSyncerSubscriber[]): Promise<void>;
+    }
+    export {};
+}
+
+declare module 'chain-syncer/types' {
+    import { ethers as Ethers } from "ethers";
     export type TChainSyncerEventArg = (number | string | boolean);
     export interface IChainSyncerEvent {
             id: string;
@@ -131,96 +228,6 @@ declare module 'chain-syncer' {
             contract_name: string;
             event_name: string;
     }
-}
-
-declare module 'chain-syncer/lib/chain-syncer' {
-    import { IChainSyncerAdapter, TChainSyncerContractsResolverHook, IChainSyncerLogger, IChainSyncerOptions, IChainSyncerListener, IChainSyncerSubscriber } from "@/types";
-    import { ethers as Ethers } from "ethers";
-    import { _loadUsedBlocks, _loadUsedTxs, _parseEventId, _parseListenerName, _uniq } from "chain-syncer/lib/chain-syncer/helpers";
-    export class ChainSyncer {
-        listeners: Record<string, IChainSyncerListener>;
-        used_contracts: string[];
-        subscribers: IChainSyncerSubscriber[];
-        _next_safe_at: number;
-        _is_started: boolean;
-        _is_scanner_busy: boolean;
-        _is_processor_busy: boolean;
-        _current_max_block: number;
-        addEvents: (this: ChainSyncer, scans: import("@/types").IChainSyncerScanResult[]) => Promise<import("@/types").IChainSyncerEvent[]>;
-        parseEvent: (this: ChainSyncer, contract_name: string, event: Ethers.EventLog, block: Ethers.Block, tx: Ethers.TransactionResponse) => import("@/types").IChainSyncerEvent;
-        resolveBlockRanges: (this: ChainSyncer, contract_name: string, max_block: number, opts?: import("@/types").IChainSyncerGetContractsEventsOptions) => Promise<import("@/types").IChainSyncerScanResult>;
-        saveLatestBlocks: (this: ChainSyncer, scans: import("@/types").IChainSyncerScanResult[]) => Promise<void>;
-        scanContracts: (this: ChainSyncer, max_block: number, opts?: import("@/types").IChainSyncerGetContractsEventsOptions) => Promise<{
-            scans: import("@/types").IChainSyncerScanResult[];
-            events: import("@/types").IChainSyncerEvent[];
-        }>;
-        scanContractBlocks: (this: ChainSyncer, contract_getter_result: import("@/types").IChainSyncerContractsResolverResult, contract_name: string, from_block: number, to_block: number) => Promise<import("@/types").IChainSyncerScanResult>;
-        on: (this: ChainSyncer, event: string, listener: import("@/types").TChainSyncerListenerHook) => Promise<void>;
-        updateSubscriber: (this: ChainSyncer, subscriber: string, events: string[]) => Promise<void>;
-        syncSubscribers: (this: ChainSyncer) => Promise<void>;
-        scannerTick: (this: ChainSyncer) => Promise<void>;
-        safeRescan: (this: ChainSyncer, max_block: number) => Promise<void>;
-        processingTick: (this: ChainSyncer) => Promise<void>;
-        processSubscriberEvents: (this: ChainSyncer, subscriber: string) => Promise<void>;
-        rpcHandle: <T>(this: ChainSyncer, handler: (rpc_url: string) => Promise<T>, archive_preferred?: boolean) => Promise<T>;
-        fillScansWithEvents: (this: ChainSyncer, scans: import("@/types").IChainSyncerScanResult[]) => Promise<void>;
-        _uniq: typeof _uniq;
-        _parseListenerName: typeof _parseListenerName;
-        _parseEventId: typeof _parseEventId;
-        _loadUsedBlocks: typeof _loadUsedBlocks;
-        _loadUsedTxs: typeof _loadUsedTxs;
-        query_block_limit: number;
-        block_time: number;
-        tick_interval: number;
-        adapter: IChainSyncerAdapter;
-        mode: string;
-        rpc_url: string[];
-        contractsResolver: TChainSyncerContractsResolverHook;
-        verbose: boolean;
-        safe_rescan_every_n_block: number;
-        safe_rescans_to_repeat: number;
-        logger: IChainSyncerLogger;
-        archive_rpc_url: string[];
-        archive_rpc_activator_edge: number;
-        constructor(adapter: IChainSyncerAdapter, opts: IChainSyncerOptions);
-        start(): Promise<void>;
-        stop(): Promise<void>;
-        selectPendingEvents(subscriber: string): Promise<import("@/types").IChainSyncerEvent[]>;
-        markEventsAsProcessed(subscriber: string, event_ids: string[]): Promise<void>;
-    }
-}
-
-declare module 'chain-syncer/lib/in-memory-adapter' {
-    import { IChainSyncerAdapter, IChainSyncerEvent, IChainSyncerSubscriber } from "@/types";
-    import { IEvent } from "chain-syncer/lib/in-memory-adapter/event";
-    import { IQueueEvent } from "chain-syncer/lib/in-memory-adapter/queue-event";
-    interface ISubscriber {
-        name: string;
-        events: string[];
-        added_at: Record<string, number>;
-    }
-    export class InMemoryAdapter implements IChainSyncerAdapter {
-        latest_blocks: Record<string, number>;
-        events: IEvent[];
-        events_queue: IQueueEvent[];
-        subscribers: Record<string, ISubscriber>;
-        _is_chainsyncer_adapter: boolean;
-        constructor();
-        getLatestScannedBlockNumber(contract_name: string): Promise<number>;
-        removeQueue(subscriber: string, events: string[]): Promise<void>;
-        addUnprocessedEventsToQueue(subscriber: string, events: string[]): Promise<void>;
-        selectAllSubscribers(): Promise<ISubscriber[]>;
-        updateSubscriber(subscriber: string, events: string[]): Promise<{
-            events_added: string[];
-            events_removed: string[];
-        }>;
-        saveLatestScannedBlockNumber(contract_name: string, block_number: number): Promise<void>;
-        selectAllUnprocessedEventsBySubscriber(subscriber: string): Promise<IEvent[]>;
-        setEventProcessedForSubscriber(id: string, subscriber: string): Promise<void>;
-        filterExistingEvents(ids: string[]): Promise<string[]>;
-        saveEvents(_events: IChainSyncerEvent[], subscribers: IChainSyncerSubscriber[]): Promise<void>;
-    }
-    export {};
 }
 
 declare module 'chain-syncer/lib/chain-syncer/helpers' {

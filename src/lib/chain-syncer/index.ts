@@ -122,6 +122,27 @@ export class ChainSyncer {
   }
 
 
+  async scannerLoop() {
+    while(this._is_started) {
+      this._is_scanner_busy = true;
+      await this.scannerTick();
+      await new Promise(resolve => setTimeout(() => resolve, this.block_time * 1.5));
+      this._is_scanner_busy = false;
+    }
+  }
+
+
+
+  async processingLoop() {
+    while(this._is_started) {
+      this._is_processor_busy = true;
+      await this.processingTick();
+      await new Promise(resolve => setTimeout(() => resolve, this.tick_interval));
+      this._is_processor_busy = false;
+    }
+  }
+
+
   async start() {
 
     if(this._is_started) {
@@ -133,14 +154,14 @@ export class ChainSyncer {
     if(this.mode === 'mono') {
       await this.updateSubscriber('mono', Object.keys(this.listeners));
     }
-    
-    this.scannerTick();
-
-    if(this.mode === 'mono') {
-      this.processingTick();
-    }
 
     this._is_started = true;
+    
+    this.scannerLoop();
+
+    if(this.mode === 'mono') {
+      this.processingLoop();
+    }
   }
 
 
