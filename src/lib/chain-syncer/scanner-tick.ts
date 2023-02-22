@@ -5,10 +5,6 @@ export const scannerTick = async function(
   this: ChainSyncer,
 ) {
 
-  const chain_id = await this.rpcHandle(async (provider) => {
-    return await provider.getNetwork();
-  }, false);
-
   let max_block = 0;
 
   try {

@@ -5665,9 +5665,6 @@ const scanContracts = function (max_block, opts = {}) {
 
 const scannerTick = function () {
     return __awaiter(this, void 0, void 0, function* () {
-        const chain_id = yield this.rpcHandle((provider) => __awaiter(this, void 0, void 0, function* () {
-            return yield provider.getNetwork();
-        }), false);
         let max_block = 0;
         try {
             max_block = yield this.rpcHandle((provider) => __awaiter(this, void 0, void 0, function* () {
