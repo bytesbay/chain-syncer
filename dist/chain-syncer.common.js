@@ -22401,7 +22401,7 @@ class ChainSyncer {
             while (this._is_started) {
                 this._is_scanner_busy = true;
                 yield this.scannerTick();
-                yield new Promise(resolve => setTimeout(() => resolve, this.block_time * 1.5));
+                yield new Promise(resolve => setTimeout(() => resolve(0), this.block_time * 1.5));
                 this._is_scanner_busy = false;
             }
         });
@@ -22411,7 +22411,7 @@ class ChainSyncer {
             while (this._is_started) {
                 this._is_processor_busy = true;
                 yield this.processingTick();
-                yield new Promise(resolve => setTimeout(() => resolve, this.tick_interval));
+                yield new Promise(resolve => setTimeout(() => resolve(0), this.tick_interval));
                 this._is_processor_busy = false;
             }
         });

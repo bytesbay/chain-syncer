@@ -35,7 +35,8 @@ const test = async () => {
 
     verbose: true,
     rpc_url: ['https://bscrpc.com', 'https://bsc-dataseed1.binance.org'],
-    block_time: 10000,
+    block_time: 1500,
+    logger: console,
 
     query_block_limit: 10,
     safe_rescans_to_repeat: 1,
