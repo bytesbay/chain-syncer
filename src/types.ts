@@ -1,4 +1,5 @@
-import { ethers as Ethers } from "ethers";
+import { ethers as Ethers, Network } from "ethers";
+import { Networkish } from "ethers/types/providers";
 
 export type TChainSyncerEventArg = (number | string | boolean); 
 
@@ -125,6 +126,9 @@ export interface IChainSyncerOptions {
 
 
   logger?: IChainSyncerLogger;
+
+
+  network_id: number | bigint | string;
 }
 
 

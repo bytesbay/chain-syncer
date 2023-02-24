@@ -5,15 +5,15 @@ export const scannerTick = async function(
   this: ChainSyncer,
 ) {
 
-  const max_block = 242195960;
+  let max_block = 0;
 
-  // try {
-  //   max_block = await this.rpcHandle(async (provider) => {
-  //     return await provider.getBlockNumber();
-  //   }, false);
-  // } catch (error) {
-  //   this.logger.error('Error while fetchaing max_block, will try again anyway:', error);
-  // }
+  try {
+    max_block = await this.rpcHandle(async (provider) => {
+      return await provider.getBlockNumber();
+    }, false);
+  } catch (error) {
+    this.logger.error('Error while fetchaing max_block, will try again anyway:', error);
+  }
 
   if(max_block >= 0) {
     try {

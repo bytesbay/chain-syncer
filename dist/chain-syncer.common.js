@@ -5655,14 +5655,15 @@ const scanContracts = function (max_block, opts = {}) {
 
 const scannerTick = function () {
     return __awaiter(this, void 0, void 0, function* () {
-        const max_block = 242195960;
-        // try {
-        //   max_block = await this.rpcHandle(async (provider) => {
-        //     return await provider.getBlockNumber();
-        //   }, false);
-        // } catch (error) {
-        //   this.logger.error('Error while fetchaing max_block, will try again anyway:', error);
-        // }
+        let max_block = 0;
+        try {
+            max_block = yield this.rpcHandle((provider) => __awaiter(this, void 0, void 0, function* () {
+                return yield provider.getBlockNumber();
+            }), false);
+        }
+        catch (error) {
+            this.logger.error('Error while fetchaing max_block, will try again anyway:', error);
+        }
         if (max_block >= 0) {
             try {
                 const { scans, events } = yield this.scanContracts(max_block);
@@ -21994,6 +21995,7 @@ function spelunkMessage(value) {
 ;// CONCATENATED MODULE: ./src/lib/chain-syncer/rpc-handle.ts
 
 
+
 const cached_providers = {};
 const rpcHandle = function (handler, archive_preferred = false) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -22006,8 +22008,12 @@ const rpcHandle = function (handler, archive_preferred = false) {
         for (const rpc_url of rpc_urls) {
             try {
                 if (!cached_providers[rpc_url]) {
-                    cached_providers[rpc_url] = new JsonRpcProvider(rpc_url, undefined, {
-                        polling: false
+                    cached_providers[rpc_url] = new JsonRpcProvider(rpc_url, this.network_id, {
+                        polling: false,
+                    });
+                    // @ts-ignore
+                    cached_providers[rpc_url]._detectNetwork = () => __awaiter(this, void 0, void 0, function* () {
+                        return new Network('-', this.network_id);
                     });
                 }
                 handler_res = yield handler(cached_providers[rpc_url]);
@@ -22027,85 +22033,76 @@ const rpcHandle = function (handler, archive_preferred = false) {
 
 ;// CONCATENATED MODULE: ./src/lib/chain-syncer/fill-scans-with-events.ts
 
+
 const cached_contracts = {};
 const fillScansWithEvents = function (scans) {
     return __awaiter(this, void 0, void 0, function* () {
-        // const aggregatedFilling = (scans: IChainSyncerScanResult[], from_block: number, to_block: number) => {
-        //   return this.rpcHandle(async (provider) => {
-        //     const logs = await provider.getLogs({
-        //       address: grouped_scans.map(n => n.contract_getter_result.address),
-        //       fromBlock: Ethers.toBeHex(from_block),
-        //       toBlock: Ethers.toBeHex(to_block),
-        //     }) || [];
-        //     const event_logs = logs.filter(n => !n.removed).map(n => {
-        //       const scan = grouped_scans.find(z => z.contract_getter_result.address === n.address);
-        //       if(!scan) {
-        //         throw new Error(`Internal. Contract ${n.address} not found!`);
-        //       }
-        //       if(!cached_contracts[scan.contract_name]) {
-        //         cached_contracts[scan.contract_name] = new Ethers.Contract(
-        //           scan?.contract_getter_result.address,
-        //           scan?.contract_getter_result.contract_abi,
-        //           provider
-        //         );
-        //       }
-        //       const contract = cached_contracts[scan.contract_name];
-        //       const description = contract.interface.parseLog({
-        //         topics: [ ...n.topics ],
-        //         data: n.data,
-        //       });
-        //       if(!description || !description.name) {
-        //         return null;
-        //       }
-        //       const fragment = contract.interface.getEvent(description.name);
-        //       if(!fragment) {
-        //         throw new Error(`Internal. Malformed fragment!`);
-        //       }
-        //       const event = new Ethers.EventLog(
-        //         n,
-        //         contract.interface,
-        //         fragment
-        //       );
-        //       return event;
-        //     }).filter(n => n !== null) as Ethers.EventLog[];
-        //     const event_ids = await this.adapter.filterExistingEvents(
-        //       event_logs.map(n => this._parseEventId(n))
-        //     );
-        //     return event_logs.filter(n => {
-        //       const id = this._parseEventId(n);
-        //       return event_ids.includes(id);
-        //     });
-        //   }, false)
-        // }
-        // // get the highest to_block from scans
-        // const highest_to_block = scans.reduce((acc, n) => {
-        //   return n.to_block > acc ? n.to_block : acc;
-        // }, 0);
-        // const grouped_scans = scans.filter(n => {
-        //   return n.to_block === highest_to_block && n.to_block - n.from_block <= this.archive_rpc_activator_edge;
-        // });
-        // // get lowest from_block from grouped_scans
-        // const lowest_from_block_from_grouped_scans = grouped_scans.length ? grouped_scans.reduce((acc, n) => {
-        //   return n.from_block < acc ? n.from_block : acc;
-        // }, Infinity) : highest_to_block;
-        // const ungrouped_scans = scans.filter(n => {
-        //   return n.to_block !== highest_to_block || n.to_block - n.from_block > this.archive_rpc_activator_edge;
-        // });  
-        // const proms = [];
-        // proms.push(aggregatedFilling(grouped_scans, lowest_from_block_from_grouped_scans, highest_to_block));
-        // proms.push(...ungrouped_scans.map(n => {
-        //   return aggregatedFilling([ n ], n.from_block, n.to_block);
-        // }));
-        // const result = await Promise.all(proms);
-        // const events = result.reduce((acc, n) => {
-        //   return [ ...acc, ...n ];
-        // }, [] as Ethers.EventLog[]);
-        // // add events to scans
-        // scans.forEach(n => {
-        //   n.events = events.filter(z => {
-        //     return z.address === n.contract_getter_result.address;
-        //   });
-        // });
+        const aggregatedFilling = (scans, from_block, to_block) => {
+            return this.rpcHandle((provider) => __awaiter(this, void 0, void 0, function* () {
+                const logs = (yield provider.getLogs({
+                    address: grouped_scans.map(n => n.contract_getter_result.address),
+                    fromBlock: toBeHex(from_block),
+                    toBlock: toBeHex(to_block),
+                })) || [];
+                const event_logs = logs.filter(n => !n.removed).map(n => {
+                    const scan = grouped_scans.find(z => z.contract_getter_result.address === n.address);
+                    if (!scan) {
+                        throw new Error(`Internal. Contract ${n.address} not found!`);
+                    }
+                    if (!cached_contracts[scan.contract_name]) {
+                        cached_contracts[scan.contract_name] = new Contract(scan === null || scan === void 0 ? void 0 : scan.contract_getter_result.address, scan === null || scan === void 0 ? void 0 : scan.contract_getter_result.contract_abi, provider);
+                    }
+                    const contract = cached_contracts[scan.contract_name];
+                    const description = contract.interface.parseLog({
+                        topics: [...n.topics],
+                        data: n.data,
+                    });
+                    if (!description || !description.name) {
+                        return null;
+                    }
+                    const fragment = contract.interface.getEvent(description.name);
+                    if (!fragment) {
+                        throw new Error(`Internal. Malformed fragment!`);
+                    }
+                    const event = new EventLog(n, contract.interface, fragment);
+                    return event;
+                }).filter(n => n !== null);
+                const event_ids = yield this.adapter.filterExistingEvents(event_logs.map(n => this._parseEventId(n)));
+                return event_logs.filter(n => {
+                    const id = this._parseEventId(n);
+                    return event_ids.includes(id);
+                });
+            }), false);
+        };
+        // get the highest to_block from scans
+        const highest_to_block = scans.reduce((acc, n) => {
+            return n.to_block > acc ? n.to_block : acc;
+        }, 0);
+        const grouped_scans = scans.filter(n => {
+            return n.to_block === highest_to_block && n.to_block - n.from_block <= this.archive_rpc_activator_edge;
+        });
+        // get lowest from_block from grouped_scans
+        const lowest_from_block_from_grouped_scans = grouped_scans.length ? grouped_scans.reduce((acc, n) => {
+            return n.from_block < acc ? n.from_block : acc;
+        }, Infinity) : highest_to_block;
+        const ungrouped_scans = scans.filter(n => {
+            return n.to_block !== highest_to_block || n.to_block - n.from_block > this.archive_rpc_activator_edge;
+        });
+        const proms = [];
+        proms.push(aggregatedFilling(grouped_scans, lowest_from_block_from_grouped_scans, highest_to_block));
+        proms.push(...ungrouped_scans.map(n => {
+            return aggregatedFilling([n], n.from_block, n.to_block);
+        }));
+        const result = yield Promise.all(proms);
+        const events = result.reduce((acc, n) => {
+            return [...acc, ...n];
+        }, []);
+        // add events to scans
+        scans.forEach(n => {
+            n.events = events.filter(z => {
+                return z.address === n.contract_getter_result.address;
+            });
+        });
     });
 };
 
@@ -22376,9 +22373,15 @@ class ChainSyncer {
             writable: true,
             value: void 0
         });
+        Object.defineProperty(this, "network_id", {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value: void 0
+        });
         const { tick_interval = 2000, query_block_limit = 200, safe_rescan_every_n_block = 5, safe_rescans_to_repeat = 2, mode = 'mono', verbose = false, contracts = [], logger = chain_syncer_console, archive_rpc_url = [], archive_rpc_activator_edge = 1000, 
         // required
-        block_time, contractsResolver, rpc_url, } = opts;
+        block_time, contractsResolver, rpc_url, network_id, } = opts;
         if (query_block_limit < (safe_rescan_every_n_block * safe_rescans_to_repeat)) {
             throw new Error('query_block_limit cannot be less than safe_rescan_every_n_block * safe_rescans_to_repeat');
         }
@@ -22407,6 +22410,7 @@ class ChainSyncer {
         this.safe_rescan_every_n_block = safe_rescan_every_n_block;
         this.safe_rescans_to_repeat = safe_rescans_to_repeat;
         this.logger = logger;
+        this.network_id = network_id;
     }
     scannerLoop() {
         return __awaiter(this, void 0, void 0, function* () {

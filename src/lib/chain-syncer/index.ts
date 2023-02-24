@@ -13,10 +13,11 @@ import { scanContracts } from "./scan-contracts";
 import { scannerTick } from "./scanner-tick";
 import { syncSubscribers } from "./sync-subscribers";
 import { IChainSyncerAdapter, TChainSyncerContractsResolverHook, IChainSyncerLogger, IChainSyncerOptions, IChainSyncerListener, IChainSyncerSubscriber } from "@/types";
-import { ethers as Ethers } from "ethers";
+import { ethers as Ethers, Network } from "ethers";
 import { _loadUsedBlocks, _loadUsedTxs, _parseEventId, _parseListenerName, _uniq } from "./helpers";
 import { rpcHandle } from "./rpc-handle";
 import { fillScansWithEvents } from "./fill-scans-with-events";
+import { Networkish } from "ethers/types/providers";
 
 export class ChainSyncer {
 
@@ -65,6 +66,7 @@ export class ChainSyncer {
   logger: IChainSyncerLogger;
   archive_rpc_url: string[];
   archive_rpc_activator_edge: number;
+  network_id: number | bigint | string;
 
   constructor(adapter: IChainSyncerAdapter, opts: IChainSyncerOptions) {
 
@@ -84,6 +86,7 @@ export class ChainSyncer {
       block_time,
       contractsResolver,
       rpc_url,
+      network_id,
     } = opts;
 
     if(query_block_limit < (safe_rescan_every_n_block * safe_rescans_to_repeat)) {
@@ -119,6 +122,7 @@ export class ChainSyncer {
     this.safe_rescan_every_n_block = safe_rescan_every_n_block;
     this.safe_rescans_to_repeat = safe_rescans_to_repeat;
     this.logger = logger;
+    this.network_id = network_id;
   }
 
 

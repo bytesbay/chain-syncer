@@ -25,6 +25,7 @@ const test = async () => {
     query_block_limit: 10,
     safe_rescans_to_repeat: 1,
     safe_rescan_every_n_block: 10,
+    network_id: 56,
 
     async contractsResolver(contract_name: string) {
       return contracts[contract_name];

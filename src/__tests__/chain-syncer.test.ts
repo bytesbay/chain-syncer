@@ -36,6 +36,7 @@ describe('Chain-Syncer', () => {
     tick_interval: 500,
     safe_rescan_every_n_block: 3,
     block_time: 500,
+    network_id: 1557,
 
     async contractsResolver(contract_name: string) {
       const contracts: Record<string, Ethers.Contract> = {

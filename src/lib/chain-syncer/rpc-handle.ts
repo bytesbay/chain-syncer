@@ -1,6 +1,6 @@
 import { IChainSyncerEvent, IChainSyncerScanResult } from "@/types";
 import * as Ethers from "ethers";
-import { JsonRpcProvider } from "ethers";
+import { JsonRpcProvider, Network } from "ethers";
 import { ChainSyncer } from ".";
 
 const cached_providers: Record<string, JsonRpcProvider> = {};
@@ -25,9 +25,15 @@ export const rpcHandle = async function<T>(
     try {
 
       if(!cached_providers[rpc_url]) {
-        cached_providers[rpc_url] = new Ethers.JsonRpcProvider(rpc_url, undefined, {
-          polling: false
+        
+        cached_providers[rpc_url] = new Ethers.JsonRpcProvider(rpc_url, this.network_id, {
+          polling: false,
         });
+
+        // @ts-ignore
+        cached_providers[rpc_url]._detectNetwork = async () => {
+          return new Network('-', this.network_id);
+        };
       }
 
       handler_res = await handler(cached_providers[rpc_url]);

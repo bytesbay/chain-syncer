@@ -60,6 +60,7 @@ declare module 'chain-syncer/lib/chain-syncer' {
         logger: IChainSyncerLogger;
         archive_rpc_url: string[];
         archive_rpc_activator_edge: number;
+        network_id: number | bigint | string;
         constructor(adapter: IChainSyncerAdapter, opts: IChainSyncerOptions);
         scannerLoop(): Promise<void>;
         processingLoop(): Promise<void>;
@@ -196,6 +197,7 @@ declare module 'chain-syncer/types' {
             archive_rpc_activator_edge?: number;
             contracts?: string[];
             logger?: IChainSyncerLogger;
+            network_id: number | bigint | string;
     }
     export interface IChainSyncerScanResult {
             contract_name: string;
