@@ -137,9 +137,6 @@ export class InMemoryAdapter implements IChainSyncerAdapter {
 
   async saveEvents(_events: IChainSyncerEvent[], subscribers: IChainSyncerSubscriber[]) {
 
-    console.log(_events);
-    
-
     if(!_events.length) {
       return;
     }

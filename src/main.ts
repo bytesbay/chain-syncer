@@ -10,22 +10,7 @@ const test = async () => {
     'BUSD': {
       contract_abi: abi,
       start_block: 25548364,
-      address: '0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56',
-    },
-    'DAI': {
-      contract_abi: abi,
-      start_block: 20548364,
-      address: '0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3',
-    },
-    'USDC': {
-      contract_abi: abi,
-      start_block: 25548364,
-      address: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d',
-    },
-    'USDT': {
-      contract_abi: abi,
-      start_block: 20548364,
-      address: '0x55d398326f99059fF775485246999027B3197955',
+      address: '0x928Cc1D8F795973774292F769EFBe06C5671A887',
     },
   }
 
@@ -33,10 +18,9 @@ const test = async () => {
 
   const syncer = new ChainSyncer(adapter, {
 
-    verbose: true,
+    // verbose: true,
     rpc_url: ['https://bscrpc.com', 'https://bsc-dataseed1.binance.org'],
-    block_time: 1500,
-    logger: console,
+    block_time: 500,
 
     query_block_limit: 10,
     safe_rescans_to_repeat: 1,
@@ -75,23 +59,7 @@ const test = async () => {
   //   console.log('Transfer', amount);
   // });
 
-  syncer.on('BUSD.Approval', (
-    event_metadata: IChainSyncerEventMetadata,
-    address: any,
-    amount: any,
-  ) => {
-    // ...
-  });
-
-  syncer.on('DAI.Approval', (
-    event_metadata: IChainSyncerEventMetadata,
-    address: any,
-    amount: any,
-  ) => {
-    // ...
-  });
-
-  syncer.on('USDC.Approval', (
+  syncer.on('BUSD.Kek', (
     event_metadata: IChainSyncerEventMetadata,
     address: any,
     amount: any,
