@@ -5655,15 +5655,14 @@ const scanContracts = function (max_block, opts = {}) {
 
 const scannerTick = function () {
     return __awaiter(this, void 0, void 0, function* () {
-        let max_block = 0;
-        try {
-            max_block = yield this.rpcHandle((provider) => __awaiter(this, void 0, void 0, function* () {
-                return yield provider.getBlockNumber();
-            }), false);
-        }
-        catch (error) {
-            this.logger.error('Error while fetchaing max_block, will try again anyway:', error);
-        }
+        const max_block = 242195960;
+        // try {
+        //   max_block = await this.rpcHandle(async (provider) => {
+        //     return await provider.getBlockNumber();
+        //   }, false);
+        // } catch (error) {
+        //   this.logger.error('Error while fetchaing max_block, will try again anyway:', error);
+        // }
         if (max_block >= 0) {
             try {
                 const { scans, events } = yield this.scanContracts(max_block);
