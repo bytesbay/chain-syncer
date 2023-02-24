@@ -33,7 +33,7 @@ export const rpcHandle = async function<T>(
         // @ts-ignore
         cached_providers[rpc_url]._detectNetwork = async () => {
           return new Network('-', this.network_id);
-        };
+        };        
       }
 
       handler_res = await handler(cached_providers[rpc_url]);
