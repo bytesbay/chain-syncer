@@ -3,8 +3,6 @@ import * as Ethers from "ethers";
 import { JsonRpcProvider, Network } from "ethers";
 import { ChainSyncer } from ".";
 
-const cached_providers: Record<string, JsonRpcProvider> = {};
-
 export const rpcHandle = async function<T>(
   this: ChainSyncer,
   handler: (rpc_provider: JsonRpcProvider) => Promise<T>,
@@ -24,19 +22,19 @@ export const rpcHandle = async function<T>(
   for (const rpc_url of rpc_urls) {
     try {
 
-      if(!cached_providers[rpc_url]) {
+      if(!this.cached_providers[rpc_url]) {
         
-        cached_providers[rpc_url] = new Ethers.JsonRpcProvider(rpc_url, this.network_id, {
+        this.cached_providers[rpc_url] = new Ethers.JsonRpcProvider(rpc_url, this.network_id, {
           polling: false,
         });
 
         // @ts-ignore
-        cached_providers[rpc_url]._detectNetwork = async () => {
+        this.cached_providers[rpc_url]._detectNetwork = async () => {
           return new Network('-', this.network_id);
-        };        
+        };
       }
 
-      handler_res = await handler(cached_providers[rpc_url]);
+      handler_res = await handler(this.cached_providers[rpc_url]);
       break;
     } catch (error) {
       index++;

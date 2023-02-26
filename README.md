@@ -17,10 +17,10 @@ ChainSyncer is a module that helps synchronize a backend with a blockchain by ca
 ---
 ## Install
 
-Works only with [ethers](https://www.npmjs.com/package/ethers) package, so don't forget to install it:
+Works only with [ethers v6](https://www.npmjs.com/package/ethers) package, so don't forget to install it:
 
 ```bash
-$ npm i chain-syncer ethers
+$ npm i chain-syncer ethers@^6.0.0
 ```
 
 ---
@@ -53,6 +53,8 @@ const syncer = new ChainSyncer(default_adapter, {
   block_time: 3500,
   
   rpc_url: 'https://data-seed-prebsc-1-s1.binance.org:8545',
+
+  network_id: 97, // BSC testnet
   
   async contractsResolver(contract_name) {
     return contracts[contract_name];
@@ -177,6 +179,12 @@ And finally run tests:
 
 ```bash
 $ npm run test
+```
+
+OR just run in one line:
+
+```bash
+$ sh test.sh full
 ```
 
 ### Building

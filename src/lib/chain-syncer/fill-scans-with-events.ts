@@ -2,8 +2,6 @@ import { IChainSyncerEvent, IChainSyncerScanResult } from "@/types";
 import * as Ethers from "ethers";
 import { ChainSyncer } from ".";
 
-const cached_contracts = {} as Record<string, Ethers.Contract>;
-
 export const fillScansWithEvents = async function(
   this: ChainSyncer,
   scans: IChainSyncerScanResult[]
@@ -12,6 +10,7 @@ export const fillScansWithEvents = async function(
   const aggregatedFilling = (scans: IChainSyncerScanResult[], from_block: number, to_block: number) => {
 
     return this.rpcHandle(async (provider) => {
+      
       const logs = await provider.getLogs({
         address: grouped_scans.map(n => n.contract_getter_result.address),
         fromBlock: Ethers.toBeHex(from_block),
@@ -26,20 +25,20 @@ export const fillScansWithEvents = async function(
           throw new Error(`Internal. Contract ${n.address} not found!`);
         }
 
-        if(!cached_contracts[scan.contract_name]) {
-          cached_contracts[scan.contract_name] = new Ethers.Contract(
+        if(!this.cached_contracts[scan.contract_name]) {
+          this.cached_contracts[scan.contract_name] = new Ethers.Contract(
             scan?.contract_getter_result.address,
             scan?.contract_getter_result.contract_abi,
             provider
           );
         }
-
-        const contract = cached_contracts[scan.contract_name];
+        
+        const contract = this.cached_contracts[scan.contract_name];
 
         const description = contract.interface.parseLog({
           topics: [ ...n.topics ],
           data: n.data,
-        });
+        });        
 
         if(!description || !description.name) {
           return null;
@@ -103,7 +102,7 @@ export const fillScansWithEvents = async function(
 
   const events = result.reduce((acc, n) => {
     return [ ...acc, ...n ];
-  }, [] as Ethers.EventLog[]);
+  }, [] as Ethers.EventLog[]);  
   
   // add events to scans
   scans.forEach(n => {

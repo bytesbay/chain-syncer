@@ -1,5 +1,5 @@
 import { IChainSyncerEventMetadata, TChainSyncerEventArg } from './types';
-import abi from '@/abis/BUSD.json';
+import abi from '@/abis/Items.json';
 import * as Ethers from 'ethers';
 import { IChainSyncerContractsResolverResult } from './types';
 import ChainSyncer, { InMemoryAdapter } from './lib';
@@ -9,8 +9,8 @@ const test = async () => {
   const contracts: Record<string, IChainSyncerContractsResolverResult> = {
     'BUSD': {
       contract_abi: abi,
-      start_block: 25548364,
-      address: '0x928Cc1D8F795973774292F769EFBe06C5671A887',
+      start_block: 895890,
+      address: '0xF1e4D5B35A3F173EdD62E1CF57B58d764c976CC6',
     },
   }
 
@@ -19,15 +19,17 @@ const test = async () => {
   const syncer = new ChainSyncer(adapter, {
 
     // verbose: true,
-    rpc_url: ['https://bscrpc.com', 'https://bsc-dataseed1.binance.org'],
+    rpc_url: 'https://zksync2-testnet.zksync.dev',
     block_time: 500,
 
-    query_block_limit: 10,
+    query_block_limit: 50,
     safe_rescans_to_repeat: 1,
     safe_rescan_every_n_block: 10,
-    network_id: 56,
+    network_id: 280,
 
     async contractsResolver(contract_name: string) {
+      // console.log(await syncer.cached_providers['https://zksync2-testnet.zksync.dev'].getNetwork());
+      
       return contracts[contract_name];
     },
   });
@@ -60,12 +62,11 @@ const test = async () => {
   //   console.log('Transfer', amount);
   // });
 
-  syncer.on('BUSD.Kek', (
+  syncer.on('BUSD.NftMinted', (
     event_metadata: IChainSyncerEventMetadata,
-    address: any,
-    amount: any,
+    ...args: TChainSyncerEventArg[]
   ) => {
-    // ...
+    console.log('WOW', event_metadata, args);
   });
 
   await syncer.start();

@@ -13,17 +13,19 @@ import { scanContracts } from "./scan-contracts";
 import { scannerTick } from "./scanner-tick";
 import { syncSubscribers } from "./sync-subscribers";
 import { IChainSyncerAdapter, TChainSyncerContractsResolverHook, IChainSyncerLogger, IChainSyncerOptions, IChainSyncerListener, IChainSyncerSubscriber } from "@/types";
-import { ethers as Ethers, Network } from "ethers";
+import { Contract, JsonRpcProvider } from "ethers";
 import { _loadUsedBlocks, _loadUsedTxs, _parseEventId, _parseListenerName, _uniq } from "./helpers";
 import { rpcHandle } from "./rpc-handle";
 import { fillScansWithEvents } from "./fill-scans-with-events";
-import { Networkish } from "ethers/types/providers";
 
 export class ChainSyncer {
 
   listeners: Record<string, IChainSyncerListener> = {}
   used_contracts: string[] = []
   subscribers: IChainSyncerSubscriber[] = []
+
+  cached_providers: Record<string, JsonRpcProvider> = {}
+  cached_contracts = {} as Record<string, Contract>
 
   _next_safe_at = 0
   _is_started = false

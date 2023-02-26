@@ -22006,7 +22006,6 @@ function spelunkMessage(value) {
 
 
 
-const cached_providers = {};
 const rpcHandle = function (handler, archive_preferred = false) {
     return __awaiter(this, void 0, void 0, function* () {
         if (archive_preferred && !this.archive_rpc_url.length) {
@@ -22017,16 +22016,16 @@ const rpcHandle = function (handler, archive_preferred = false) {
         let handler_res;
         for (const rpc_url of rpc_urls) {
             try {
-                if (!cached_providers[rpc_url]) {
-                    cached_providers[rpc_url] = new JsonRpcProvider(rpc_url, this.network_id, {
+                if (!this.cached_providers[rpc_url]) {
+                    this.cached_providers[rpc_url] = new JsonRpcProvider(rpc_url, this.network_id, {
                         polling: false,
                     });
                     // @ts-ignore
-                    cached_providers[rpc_url]._detectNetwork = () => __awaiter(this, void 0, void 0, function* () {
+                    this.cached_providers[rpc_url]._detectNetwork = () => __awaiter(this, void 0, void 0, function* () {
                         return new Network('-', this.network_id);
                     });
                 }
-                handler_res = yield handler(cached_providers[rpc_url]);
+                handler_res = yield handler(this.cached_providers[rpc_url]);
                 break;
             }
             catch (error) {
@@ -22044,7 +22043,6 @@ const rpcHandle = function (handler, archive_preferred = false) {
 ;// CONCATENATED MODULE: ./src/lib/chain-syncer/fill-scans-with-events.ts
 
 
-const cached_contracts = {};
 const fillScansWithEvents = function (scans) {
     return __awaiter(this, void 0, void 0, function* () {
         const aggregatedFilling = (scans, from_block, to_block) => {
@@ -22059,10 +22057,10 @@ const fillScansWithEvents = function (scans) {
                     if (!scan) {
                         throw new Error(`Internal. Contract ${n.address} not found!`);
                     }
-                    if (!cached_contracts[scan.contract_name]) {
-                        cached_contracts[scan.contract_name] = new Contract(scan === null || scan === void 0 ? void 0 : scan.contract_getter_result.address, scan === null || scan === void 0 ? void 0 : scan.contract_getter_result.contract_abi, provider);
+                    if (!this.cached_contracts[scan.contract_name]) {
+                        this.cached_contracts[scan.contract_name] = new Contract(scan === null || scan === void 0 ? void 0 : scan.contract_getter_result.address, scan === null || scan === void 0 ? void 0 : scan.contract_getter_result.contract_abi, provider);
                     }
-                    const contract = cached_contracts[scan.contract_name];
+                    const contract = this.cached_contracts[scan.contract_name];
                     const description = contract.interface.parseLog({
                         topics: [...n.topics],
                         data: n.data,
@@ -22154,6 +22152,18 @@ class ChainSyncer {
             configurable: true,
             writable: true,
             value: []
+        });
+        Object.defineProperty(this, "cached_providers", {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value: {}
+        });
+        Object.defineProperty(this, "cached_contracts", {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value: {}
         });
         Object.defineProperty(this, "_next_safe_at", {
             enumerable: true,

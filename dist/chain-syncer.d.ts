@@ -13,19 +13,21 @@ declare module 'chain-syncer' {
 
 declare module 'chain-syncer/lib/chain-syncer' {
     import { IChainSyncerAdapter, TChainSyncerContractsResolverHook, IChainSyncerLogger, IChainSyncerOptions, IChainSyncerListener, IChainSyncerSubscriber } from "@/types";
-    import { ethers as Ethers } from "ethers";
+    import { Contract, JsonRpcProvider } from "ethers";
     import { _loadUsedBlocks, _loadUsedTxs, _parseEventId, _parseListenerName, _uniq } from "chain-syncer/lib/chain-syncer/helpers";
     export class ChainSyncer {
         listeners: Record<string, IChainSyncerListener>;
         used_contracts: string[];
         subscribers: IChainSyncerSubscriber[];
+        cached_providers: Record<string, JsonRpcProvider>;
+        cached_contracts: Record<string, Contract>;
         _next_safe_at: number;
         _is_started: boolean;
         _is_scanner_busy: boolean;
         _is_processor_busy: boolean;
         _current_max_block: number;
         addEvents: (this: ChainSyncer, scans: import("@/types").IChainSyncerScanResult[]) => Promise<import("@/types").IChainSyncerEvent[]>;
-        parseEvent: (this: ChainSyncer, contract_name: string, event: Ethers.EventLog, block: Ethers.Block, tx: Ethers.TransactionResponse) => import("@/types").IChainSyncerEvent;
+        parseEvent: (this: ChainSyncer, contract_name: string, event: import("ethers").EventLog, block: import("ethers").Block, tx: import("ethers").TransactionResponse) => import("@/types").IChainSyncerEvent;
         resolveBlockRanges: (this: ChainSyncer, contract_name: string, max_block: number, opts?: import("@/types").IChainSyncerGetContractsEventsOptions) => Promise<import("@/types").IChainSyncerScanResult>;
         saveLatestBlocks: (this: ChainSyncer, scans: import("@/types").IChainSyncerScanResult[]) => Promise<void>;
         scanContracts: (this: ChainSyncer, max_block: number, opts?: import("@/types").IChainSyncerGetContractsEventsOptions) => Promise<{
@@ -40,7 +42,7 @@ declare module 'chain-syncer/lib/chain-syncer' {
         safeRescan: (this: ChainSyncer, max_block: number) => Promise<void>;
         processingTick: (this: ChainSyncer) => Promise<void>;
         processSubscriberEvents: (this: ChainSyncer, subscriber: string) => Promise<void>;
-        rpcHandle: <T>(this: ChainSyncer, handler: (rpc_provider: Ethers.JsonRpcProvider) => Promise<T>, archive_preferred?: boolean) => Promise<T>;
+        rpcHandle: <T>(this: ChainSyncer, handler: (rpc_provider: JsonRpcProvider) => Promise<T>, archive_preferred?: boolean) => Promise<T>;
         fillScansWithEvents: (this: ChainSyncer, scans: import("@/types").IChainSyncerScanResult[]) => Promise<void>;
         _uniq: typeof _uniq;
         _parseListenerName: typeof _parseListenerName;
