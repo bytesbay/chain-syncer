@@ -5480,10 +5480,10 @@ const resolveBlockRanges = function (contract_name, max_block, opts = {}) {
 };
 
 ;// CONCATENATED MODULE: ./src/lib/chain-syncer/parse-event.ts
-const padIndex = (num) => {
-    return num.toString().padStart(6, '0');
-};
 const parseEvent = function (contract_name, event, block, tx) {
+    const padIndex = (num) => {
+        return num.toString().padStart(6, '0');
+    };
     const opts = {
         id: this._parseEventId(event),
         contract: contract_name,
@@ -5516,11 +5516,11 @@ const parseEvent = function (contract_name, event, block, tx) {
 
 ;// CONCATENATED MODULE: ./src/lib/chain-syncer/process-subscriber-events.ts
 
-const parseListenerName = (e) => {
-    return `${e.contract}.${e.event}`;
-};
 const processSubscriberEvents = function (subscriber) {
     return __awaiter(this, void 0, void 0, function* () {
+        const parseListenerName = (e) => {
+            return `${e.contract}.${e.event}`;
+        };
         // get all unprocessed events by contract and event name
         let events = yield this.adapter.selectAllUnprocessedEventsBySubscriber(subscriber);
         events = events.filter(n => this.listeners[parseListenerName(n)]);
@@ -5756,7 +5756,7 @@ function _loadUsedTxs(events) {
 /**
  *  The current version of Ethers.
  */
-const version = "6.0.5";
+const version = "6.0.8";
 //# sourceMappingURL=_version.js.map
 ;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/utils/properties.js
 /**
@@ -8121,7 +8121,7 @@ function replaceFunc(reason, offset, bytes, output, badCodepoint) {
  *  and accepts non-canonical (overlong) codepoints
  *
  *  **``"replace"``** - replace any illegal UTF-8 sequence with the
- *  UTF-8 replacement character (i.e. `\ufffd`) and accepts
+ *  UTF-8 replacement character (i.e. ``"\\ufffd"``) and accepts
  *  non-canonical (overlong) codepoints
  *
  *  @returns: Record<"error" | "ignore" | "replace", Utf8ErrorFunc>
@@ -18315,7 +18315,7 @@ class EnsResolver {
             "function addr(bytes32) view returns (address)",
             "function addr(bytes32, uint) view returns (address)",
             "function text(bytes32, string) view returns (string)",
-            "function contenthash() view returns (bytes)",
+            "function contenthash(bytes32) view returns (bytes)",
         ], provider);
     }
     /**
@@ -18444,7 +18444,7 @@ class EnsResolver {
      */
     async getContentHash() {
         // keccak256("contenthash()")
-        const data = await this.#fetch("contenthash()");
+        const data = await this.#fetch("contenthash(bytes32)");
         // No contenthash
         if (data == null || data === "0x") {
             return null;
@@ -19353,32 +19353,47 @@ function injectCommonNetworks() {
     registerEth("classic", 61, {});
     registerEth("classicKotti", 6, {});
     registerEth("xdai", 100, { ensNetwork: 1 });
+    registerEth("optimism", 10, {
+        ensNetwork: 1,
+        etherscan: { url: "https:/\/api-optimistic.etherscan.io/" }
+    });
+    registerEth("optimism-goerli", 420, {
+        etherscan: { url: "https:/\/api-goerli-optimistic.etherscan.io/" }
+    });
+    registerEth("arbitrum", 42161, {
+        ensNetwork: 1,
+        etherscan: { url: "https:/\/api.arbiscan.io/" }
+    });
+    registerEth("arbitrum-goerli", 421613, {
+        etherscan: { url: "https:/\/api-goerli.arbiscan.io/" }
+    });
     // Polygon has a 35 gwei maxPriorityFee requirement
     registerEth("matic", 137, {
         ensNetwork: 1,
         //        priorityFee: 35000000000,
         etherscan: {
-            apiKey: "W6T8DJW654GNTQ34EFEYYP3EZD9DD27CT7",
+            //            apiKey: "W6T8DJW654GNTQ34EFEYYP3EZD9DD27CT7",
             url: "https:/\/api.polygonscan.com/"
         }
     });
-    registerEth("maticMumbai", 80001, {
+    registerEth("matic-mumbai", 80001, {
+        altNames: ["maticMumbai", "maticmum"],
         //        priorityFee: 35000000000,
         etherscan: {
-            apiKey: "W6T8DJW654GNTQ34EFEYYP3EZD9DD27CT7",
+            //            apiKey: "W6T8DJW654GNTQ34EFEYYP3EZD9DD27CT7",
             url: "https:/\/api-testnet.polygonscan.com/"
         }
     });
     registerEth("bnb", 56, {
         ensNetwork: 1,
         etherscan: {
-            apiKey: "EVTS3CU31AATZV72YQ55TPGXGMVIFUQ9M9",
+            //            apiKey: "EVTS3CU31AATZV72YQ55TPGXGMVIFUQ9M9",
             url: "http:/\/api.bscscan.com"
         }
     });
     registerEth("bnbt", 97, {
         etherscan: {
-            apiKey: "EVTS3CU31AATZV72YQ55TPGXGMVIFUQ9M9",
+            //            apiKey: "EVTS3CU31AATZV72YQ55TPGXGMVIFUQ9M9",
             url: "http:/\/api-testnet.bscscan.com"
         }
     });
@@ -21233,6 +21248,7 @@ class JsonRpcSigner extends AbstractSigner {
     address;
     constructor(provider, address) {
         super(provider);
+        address = address_getAddress(address);
         properties_defineProperties(this, { address });
     }
     connect(provider) {
@@ -21855,8 +21871,8 @@ class JsonRpcApiProvider extends AbstractProvider {
         // Account address
         address = address_getAddress(address);
         for (const account of accounts) {
-            if (address_getAddress(account) === account) {
-                return new JsonRpcSigner(this, account);
+            if (address_getAddress(account) === address) {
+                return new JsonRpcSigner(this, address);
             }
         }
         throw new Error("invalid account");

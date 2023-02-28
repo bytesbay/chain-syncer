@@ -8,6 +8,8 @@ ChainSyncer is a module that helps synchronize a backend with a blockchain by ca
 
 - [Cookbook](https://medium.com/@bytesbay/chainsyncer-cookbook-76f29285fdeb)
 
+- [Comparison to Moralis Streams](https://bytesbay.hashnode.dev/moralis-streams-vs-chainsyncer-1)
+
 ## Updates
 
 - 3.0.0 - Project codebase moved to Typescript. Also some naming changes.

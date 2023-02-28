@@ -1,7 +1,3 @@
-const padIndex = (num: number) => {
-  return num.toString().padStart(6, '0')
-}
-
 import { IChainSyncerEvent, TChainSyncerEventArg } from "@/types";
 import { ethers as Ethers } from "ethers";
 import { ChainSyncer } from ".";
@@ -13,6 +9,10 @@ export const parseEvent = function(
   block: Ethers.Block, 
   tx: Ethers.TransactionResponse
 ): IChainSyncerEvent {
+
+  const padIndex = (num: number) => {
+    return num.toString().padStart(6, '0')
+  }
 
   const opts = {
     id: this._parseEventId(event),

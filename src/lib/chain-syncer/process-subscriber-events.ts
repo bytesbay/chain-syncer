@@ -1,14 +1,14 @@
 import { IChainSyncerEvent } from "@/types";
 import { ChainSyncer } from ".";
 
-const parseListenerName = (e: IChainSyncerEvent): string => {
-  return `${e.contract}.${e.event}`
-}
-
 export const processSubscriberEvents = async function(
   this: ChainSyncer,
   subscriber: string
 ): Promise<void> {
+
+  const parseListenerName = (e: IChainSyncerEvent): string => {
+    return `${e.contract}.${e.event}`
+  }
 
   // get all unprocessed events by contract and event name
   let events = await this.adapter.selectAllUnprocessedEventsBySubscriber(
