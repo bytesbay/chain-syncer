@@ -14,7 +14,7 @@ ChainSyncer is a module that helps synchronize a backend with a blockchain by ca
 
 - 3.0.0 - Project codebase moved to Typescript. Also some naming changes.
 
-- 4.0.0 - Reworked reliablity and speed of the module. Now it is much faster and more reliable. If some of the RPCs are down - it will automatically switch to another one. Also ChainSyncer now tries to batch load events from the blockchain. This allows to reduce the number of RPC calls and speed up the process. And the last one - Chain Syncer moved to [Ethers V6](https://docs.ethers.org/v6/)
+- 4.0.0 - Reworked reliability and speed of the module. Now it is much faster and more reliable. If some of the RPCs are down - it will automatically switch to another one. Also ChainSyncer now tries to batch load events from the blockchain. This allows to reduce the number of RPC calls and speed up the process. And the last one - Chain Syncer moved to [Ethers V6](https://docs.ethers.org/v6/)
 
 ---
 ## Install
@@ -70,7 +70,7 @@ syncer.on('Items.Transfer', async (
   token_id,
 ) => {
 
-  // global_index is a uniq id of event which is created from block number and logIndex padded with zeros
+  // global_index is a unique id of event which is created from block number and logIndex padded with zeros
   // example - if block_number is 234 and logIndex of the event is 4 so global_index will be 234000004
 
   const item = await Item.findOne({ _id: token_id });
@@ -195,7 +195,7 @@ $ sh test.sh full
 $ npm run build
 ```
 
-Please make sure you built `dist` folder before commiting.
+Please make sure you built `dist` folder before committing.
 
 ---
 
