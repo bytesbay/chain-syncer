@@ -120,11 +120,14 @@ export class ChainSyncer {
     }
   
     const contract_getter_result = await this.contractsResolver(contract_name);
+
+    const is_need_archive_rpc = (to_block < (max_block - this.archive_rpc_activator_edge)) || (from_block < (max_block - this.archive_rpc_activator_edge));
   
     return {
       contract_name,
       from_block,
       to_block,
+      is_need_archive_rpc,
       contract_getter_result,
       events: [],
     };
@@ -176,41 +179,6 @@ export class ChainSyncer {
   
     return { scans, events };
   
-  }
-
-
-  async scanContractBlocks(
-    contract_getter_result: IChainSyncerContractsResolverResult, 
-    contract_name: string, 
-    from_block: number, 
-    to_block: number
-  ): Promise<IChainSyncerScanResult> {
-
-    let events = [] as Ethers.EventLog[];
-
-    events = events.filter(n => {
-      const event = n;
-
-      // if unknown events (not declared in contract ABI) - just skip
-      return event.eventName && event.args // TODO: filter with streams
-    })
-
-    const event_ids = await this.adapter.filterExistingEvents(
-      events.map(n => this._parseEventId(n))
-    );
-
-    events = events.filter(n => {
-      const id = this._parseEventId(n);
-      return event_ids.includes(id);
-    });
-    
-    return {
-      contract_name,
-      contract_getter_result,
-      events,
-      from_block: from_block,
-      to_block: to_block,
-    }
   }
 
   async on(
@@ -453,19 +421,24 @@ export class ChainSyncer {
     scans: IChainSyncerScanResult[]
   ): Promise<void> {
 
-    const aggregatedFilling = (scans: IChainSyncerScanResult[], from_block: number, to_block: number) => {
+    const aggregatedFilling = (
+      scans: IChainSyncerScanResult[], 
+      from_block: number, 
+      to_block: number,
+      is_need_archive_rpc: boolean
+    ) => {
 
       return this.rpcHandle(async (provider) => {
         
         const logs = await provider.getLogs({
-          address: grouped_scans.map(n => n.contract_getter_result.address),
+          address: scans.map(n => n.contract_getter_result.address),
           fromBlock: Ethers.toBeHex(from_block),
           toBlock: Ethers.toBeHex(to_block),
         }) || [];
     
         const event_logs = logs.filter(n => !n.removed).map(n => {
 
-          const scan = grouped_scans.find(z => z.contract_getter_result.address === n.address);
+          const scan = scans.find(z => z.contract_getter_result.address === n.address);
 
           if(!scan) {
             throw new Error(`Internal. Contract ${n.address} not found!`);
@@ -515,7 +488,7 @@ export class ChainSyncer {
           return event_ids.includes(id);
         });
 
-      }, false)
+      }, is_need_archive_rpc)
     }
 
     // get the highest to_block from scans
@@ -524,7 +497,7 @@ export class ChainSyncer {
     }, 0);
   
     const grouped_scans = scans.filter(n => {
-      return n.to_block === highest_to_block && n.to_block - n.from_block <= this.archive_rpc_activator_edge;
+      return n.to_block === highest_to_block;
     });
 
     // get lowest from_block from grouped_scans
@@ -533,15 +506,22 @@ export class ChainSyncer {
     }, Infinity) : highest_to_block;
 
     const ungrouped_scans = scans.filter(n => {
-      return n.to_block !== highest_to_block || n.to_block - n.from_block > this.archive_rpc_activator_edge;
+      return n.to_block !== highest_to_block;
     });  
 
     const proms = [];
 
-    proms.push(aggregatedFilling(grouped_scans, lowest_from_block_from_grouped_scans, highest_to_block));
+    proms.push(
+      aggregatedFilling(
+        grouped_scans, 
+        lowest_from_block_from_grouped_scans, 
+        highest_to_block, 
+        grouped_scans[0].is_need_archive_rpc
+      )
+    );
 
     proms.push(...ungrouped_scans.map(n => {
-      return aggregatedFilling([ n ], n.from_block, n.to_block);
+      return aggregatedFilling([ n ], n.from_block, n.to_block, n.is_need_archive_rpc);
     }));
 
     const result = await Promise.all(proms);

@@ -137,6 +137,7 @@ export interface IChainSyncerScanResult {
   from_block: number;
   to_block: number;
   events: (Ethers.EventLog)[];
+  is_need_archive_rpc: boolean;
   contract_getter_result: IChainSyncerContractsResolverResult;
 }
 
