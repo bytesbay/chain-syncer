@@ -1,6 +1,6 @@
 {
   "name": "chain-syncer",
-  "version": "4.1.3",
+  "version": "4.1.4",
   "private": false,
   "description": "chain-syncer is a JS module which allows you to synchronize your app with any ethereum-compatible blockchain/contract state. Fast. Flexible. Reliable.",
   "author": "bytesbay",
@@ -9,7 +9,7 @@
     "build": "vue-cli-service build --target lib src/lib.ts && npm run bundle-dts && mv src/chain-syncer.d.ts dist/chain-syncer.d.ts",
     "test": "vue-cli-service test:unit",
     "lint": "vue-cli-service lint",
-    "bundle-dts": "vue-cli-service bundle-dts --baseDir ./src --main ../src/lib.ts --removeSource"
+    "bundle-dts": "vue-cli-service bundle-dts --baseDir ./src --main ../src/lib.ts --removeSource --outputAsModuleFolder"
   },
   "main": "dist/chain-syncer.umd.min.js",
   "types": "dist/chain-syncer.d.ts",
