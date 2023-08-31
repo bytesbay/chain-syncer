@@ -4,8 +4,13 @@
 //   ../@/types
 
 import { ethers as Ethers, JsonRpcProvider } from "ethers";
+import { IChainSyncerAdapter, TChainSyncerContractsResolverHook, IChainSyncerLogger, IChainSyncerOptions, IChainSyncerListener, IChainSyncerSubscriber, IChainSyncerScanResult, IChainSyncerEvent, IChainSyncerGetContractsEventsOptions, TChainSyncerListenerHook } from "@/types";
+import { IChainSyncerAdapter, IChainSyncerEvent, IChainSyncerSubscriber } from "@/types";
+import { ethers as Ethers } from "ethers";
+import { IChainSyncerEvent } from "@/types";
 
 export default ChainSyncer;
+export { ChainSyncer, InMemoryAdapter };
 
 export class ChainSyncer {
     listeners: Record<string, IChainSyncerListener>;

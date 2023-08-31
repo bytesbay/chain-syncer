@@ -22464,7 +22464,7 @@ class ChainSyncer {
                     }
                 }
                 catch (error) {
-                    this.logger.error('Error in scanner', error);
+                    this.logger.error(`Error in scanner, ${error}`);
                 }
             }
         });
@@ -22559,6 +22559,7 @@ class ChainSyncer {
                 catch (error) {
                     index++;
                     if (index === rpc_urls.length) {
+                        error.message = `RPC error ${rpc_url} (${index} try): ${error.message}`;
                         throw error;
                     }
                 }
