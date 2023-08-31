@@ -22745,11 +22745,11 @@ class ChainSyncer {
             const used_blocks = this._uniq(events.map(n => n.blockNumber));
             return yield Promise.all(used_blocks.map(n => {
                 return this.rpcHandle((provider) => __awaiter(this, void 0, void 0, function* () {
-                    return yield provider.getBlock(n).catch((err) => {
-                        this.logger.error(`getBlock error in ${n} block: ${err.message}`);
-                        return null;
-                    });
-                }), false);
+                    return yield provider.getBlock(n);
+                })).catch((err) => {
+                    this.logger.error(`getBlock error in ${n} block: ${err.message}`);
+                    return null;
+                });
             }).filter(n => n !== null)).then(res => res.filter(n => n !== null));
         });
     }
@@ -22758,11 +22758,11 @@ class ChainSyncer {
             const used_txs = this._uniq(events.map(n => n.transactionHash));
             return yield Promise.all(used_txs.map(n => {
                 return this.rpcHandle((provider) => __awaiter(this, void 0, void 0, function* () {
-                    return yield provider.getTransaction(n).catch((err) => {
-                        this.logger.error(`getTransaction error in ${n} tx: ${err.message}`);
-                        return null;
-                    });
-                }), false);
+                    return yield provider.getTransaction(n);
+                })).catch((err) => {
+                    this.logger.error(`getTransaction error in ${n} tx: ${err.message}`);
+                    return null;
+                });
             }).filter(n => n !== null)).then(res => res.filter(n => n !== null));
         });
     }
