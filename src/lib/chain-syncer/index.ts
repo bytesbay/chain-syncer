@@ -281,8 +281,8 @@ export class ChainSyncer {
           await this.safeRescan(max_block);
         }
 
-      } catch (error) {
-        this.logger.error(`Error in scanner, ${error}`);
+      } catch (error: any) {
+        this.logger.error(`Error in scanner, ${error.message}`);
       }
     }
   }
@@ -742,7 +742,7 @@ export class ChainSyncer {
   
         return this.rpcHandle(async (provider) => {
           return await provider.getBlock(n).catch((err: any) => {
-            this.logger.error(`getBlock error in ${n} block`);
+            this.logger.error(`getBlock error in ${n} block: ${err.message}`);
             return null;
           })
         }, false);
@@ -758,7 +758,7 @@ export class ChainSyncer {
       used_txs.map(n => {
         return this.rpcHandle(async (provider) => {
           return await provider.getTransaction(n).catch((err: any) => {
-            this.logger.error(`getTransaction error in ${n} tx`);
+            this.logger.error(`getTransaction error in ${n} tx: ${err.message}`);
             return null;
           })
         }, false);

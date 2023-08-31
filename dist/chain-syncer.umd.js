@@ -22464,7 +22464,7 @@ class ChainSyncer {
                     }
                 }
                 catch (error) {
-                    this.logger.error(`Error in scanner, ${error}`);
+                    this.logger.error(`Error in scanner, ${error.message}`);
                 }
             }
         });
@@ -22747,7 +22747,7 @@ class ChainSyncer {
             return yield Promise.all(used_blocks.map(n => {
                 return this.rpcHandle((provider) => __awaiter(this, void 0, void 0, function* () {
                     return yield provider.getBlock(n).catch((err) => {
-                        this.logger.error(`getBlock error in ${n} block`);
+                        this.logger.error(`getBlock error in ${n} block: ${err.message}`);
                         return null;
                     });
                 }), false);
@@ -22760,7 +22760,7 @@ class ChainSyncer {
             return yield Promise.all(used_txs.map(n => {
                 return this.rpcHandle((provider) => __awaiter(this, void 0, void 0, function* () {
                     return yield provider.getTransaction(n).catch((err) => {
-                        this.logger.error(`getTransaction error in ${n} tx`);
+                        this.logger.error(`getTransaction error in ${n} tx: ${err.message}`);
                         return null;
                     });
                 }), false);
