@@ -408,8 +408,7 @@ export class ChainSyncer {
       } catch (error: any) {
         index++;
         if(index === rpc_urls.length) {
-          error.message = `RPC error ${rpc_url} (${index} try): ${error.message}`;
-          throw error;
+          throw new Error(`RPC error ${rpc_url} (${index} try): ${error}`);
         }
       }
     }
