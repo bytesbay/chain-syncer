@@ -740,11 +740,11 @@ export class ChainSyncer {
       used_blocks.map(n => {
   
         return this.rpcHandle(async (provider) => {
-          return await provider.getBlock(n).catch((err: any) => {
-            this.logger.error(`getBlock error in ${n} block: ${err.message}`);
-            return null;
-          })
-        }, false);
+          return await provider.getBlock(n)
+        }).catch((err: any) => {
+          this.logger.error(`getBlock error in ${n} block: ${err.message}`);
+          return null;
+        });
         
       }).filter(n => n !== null)
     ).then(res => res.filter(n => n !== null) as Ethers.Block[]);
@@ -756,11 +756,11 @@ export class ChainSyncer {
     return await Promise.all(
       used_txs.map(n => {
         return this.rpcHandle(async (provider) => {
-          return await provider.getTransaction(n).catch((err: any) => {
-            this.logger.error(`getTransaction error in ${n} tx: ${err.message}`);
-            return null;
-          })
-        }, false);
+          return await provider.getTransaction(n)
+        }).catch((err: any) => {
+          this.logger.error(`getTransaction error in ${n} tx: ${err.message}`);
+          return null;
+        });
       }).filter(n => n !== null)
     ).then(res => res.filter(n => n !== null) as Ethers.TransactionResponse[]);
   }
