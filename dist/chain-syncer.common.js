@@ -22540,7 +22540,10 @@ class ChainSyncer {
             let handler_res;
             for (const rpc_url of rpc_urls) {
                 try {
-                    if (!this.cached_providers[rpc_url] && !this.blocked_providers[rpc_url]) {
+                    if (this.blocked_providers[rpc_url]) {
+                        continue;
+                    }
+                    if (!this.cached_providers[rpc_url]) {
                         const network = Network.from(this.network_id);
                         this.cached_providers[rpc_url] = new JsonRpcProvider(rpc_url, network, {
                             polling: false,
