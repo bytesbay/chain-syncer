@@ -5373,1051 +5373,6 @@ function __classPrivateFieldSet(receiver, privateMap, value) {
     return value;
 }
 
-;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/_version.js
-/* Do NOT modify this file; see /src.ts/_admin/update-version.ts */
-/**
- *  The current version of Ethers.
- */
-const version = "6.3.0";
-//# sourceMappingURL=_version.js.map
-;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/utils/properties.js
-/**
- *  Property helper functions.
- *
- *  @_subsection api/utils:Properties  [about-properties]
- */
-function checkType(value, type, name) {
-    const types = type.split("|").map(t => t.trim());
-    for (let i = 0; i < types.length; i++) {
-        switch (type) {
-            case "any":
-                return;
-            case "bigint":
-            case "boolean":
-            case "number":
-            case "string":
-                if (typeof (value) === type) {
-                    return;
-                }
-        }
-    }
-    const error = new Error(`invalid value for type ${type}`);
-    error.code = "INVALID_ARGUMENT";
-    error.argument = `value.${name}`;
-    error.value = value;
-    throw error;
-}
-/**
- *  Resolves to a new object that is a copy of %%value%%, but with all
- *  values resolved.
- */
-async function resolveProperties(value) {
-    const keys = Object.keys(value);
-    const results = await Promise.all(keys.map((k) => Promise.resolve(value[k])));
-    return results.reduce((accum, v, index) => {
-        accum[keys[index]] = v;
-        return accum;
-    }, {});
-}
-/**
- *  Assigns the %%values%% to %%target%% as read-only values.
- *
- *  It %%types%% is specified, the values are checked.
- */
-function properties_defineProperties(target, values, types) {
-    for (let key in values) {
-        let value = values[key];
-        const type = (types ? types[key] : null);
-        if (type) {
-            checkType(value, type, key);
-        }
-        Object.defineProperty(target, key, { enumerable: true, value, writable: false });
-    }
-}
-//# sourceMappingURL=properties.js.map
-;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/utils/errors.js
-/**
- *  About Errors.
- *
- *  @_section: api/utils/errors:Errors  [about-errors]
- */
-
-
-function stringify(value) {
-    if (value == null) {
-        return "null";
-    }
-    if (Array.isArray(value)) {
-        return "[ " + (value.map(stringify)).join(", ") + " ]";
-    }
-    if (value instanceof Uint8Array) {
-        const HEX = "0123456789abcdef";
-        let result = "0x";
-        for (let i = 0; i < value.length; i++) {
-            result += HEX[value[i] >> 4];
-            result += HEX[value[i] & 0xf];
-        }
-        return result;
-    }
-    if (typeof (value) === "object" && typeof (value.toJSON) === "function") {
-        return stringify(value.toJSON());
-    }
-    switch (typeof (value)) {
-        case "boolean":
-        case "symbol":
-            return value.toString();
-        case "bigint":
-            return BigInt(value).toString();
-        case "number":
-            return (value).toString();
-        case "string":
-            return JSON.stringify(value);
-        case "object": {
-            const keys = Object.keys(value);
-            keys.sort();
-            return "{ " + keys.map((k) => `${stringify(k)}: ${stringify(value[k])}`).join(", ") + " }";
-        }
-    }
-    return `[ COULD NOT SERIALIZE ]`;
-}
-/**
- *  Returns true if the %%error%% matches an error thrown by ethers
- *  that matches the error %%code%%.
- *
- *  In TypeScript envornoments, this can be used to check that %%error%%
- *  matches an EthersError type, which means the expected properties will
- *  be set.
- *
- *  @See [ErrorCodes](api:ErrorCode)
- *  @example
- *    try {
- *      // code....
- *    } catch (e) {
- *      if (isError(e, "CALL_EXCEPTION")) {
- *          // The Type Guard has validated this object
- *          console.log(e.data);
- *      }
- *    }
- */
-function isError(error, code) {
-    return (error && error.code === code);
-}
-/**
- *  Returns true if %%error%% is a [[CallExceptionError].
- */
-function isCallException(error) {
-    return isError(error, "CALL_EXCEPTION");
-}
-/**
- *  Returns a new Error configured to the format ethers emits errors, with
- *  the %%message%%, [[api:ErrorCode]] %%code%% and additioanl properties
- *  for the corresponding EthersError.
- *
- *  Each error in ethers includes the version of ethers, a
- *  machine-readable [[ErrorCode]], and depneding on %%code%%, additional
- *  required properties. The error message will also include the %%meeage%%,
- *  ethers version, %%code%% and all aditional properties, serialized.
- */
-function makeError(message, code, info) {
-    {
-        const details = [];
-        if (info) {
-            if ("message" in info || "code" in info || "name" in info) {
-                throw new Error(`value will overwrite populated values: ${stringify(info)}`);
-            }
-            for (const key in info) {
-                const value = (info[key]);
-                //                try {
-                details.push(key + "=" + stringify(value));
-                //                } catch (error: any) {
-                //                console.log("MMM", error.message);
-                //                    details.push(key + "=[could not serialize object]");
-                //                }
-            }
-        }
-        details.push(`code=${code}`);
-        details.push(`version=${version}`);
-        if (details.length) {
-            message += " (" + details.join(", ") + ")";
-        }
-    }
-    let error;
-    switch (code) {
-        case "INVALID_ARGUMENT":
-            error = new TypeError(message);
-            break;
-        case "NUMERIC_FAULT":
-        case "BUFFER_OVERRUN":
-            error = new RangeError(message);
-            break;
-        default:
-            error = new Error(message);
-    }
-    properties_defineProperties(error, { code });
-    if (info) {
-        Object.assign(error, info);
-    }
-    return error;
-}
-/**
- *  Throws an EthersError with %%message%%, %%code%% and additional error
- *  %%info%% when %%check%% is falsish..
- *
- *  @see [[api:makeError]]
- */
-function errors_assert(check, message, code, info) {
-    if (!check) {
-        throw makeError(message, code, info);
-    }
-}
-/**
- *  A simple helper to simply ensuring provided arguments match expected
- *  constraints, throwing if not.
- *
- *  In TypeScript environments, the %%check%% has been asserted true, so
- *  any further code does not need additional compile-time checks.
- */
-function errors_assertArgument(check, message, name, value) {
-    errors_assert(check, message, "INVALID_ARGUMENT", { argument: name, value: value });
-}
-function assertArgumentCount(count, expectedCount, message) {
-    if (message == null) {
-        message = "";
-    }
-    if (message) {
-        message = ": " + message;
-    }
-    errors_assert(count >= expectedCount, "missing arguemnt" + message, "MISSING_ARGUMENT", {
-        count: count,
-        expectedCount: expectedCount
-    });
-    errors_assert(count <= expectedCount, "too many arguemnts" + message, "UNEXPECTED_ARGUMENT", {
-        count: count,
-        expectedCount: expectedCount
-    });
-}
-const _normalizeForms = ["NFD", "NFC", "NFKD", "NFKC"].reduce((accum, form) => {
-    try {
-        // General test for normalize
-        /* c8 ignore start */
-        if ("test".normalize(form) !== "test") {
-            throw new Error("bad");
-        }
-        ;
-        /* c8 ignore stop */
-        if (form === "NFD") {
-            const check = String.fromCharCode(0xe9).normalize("NFD");
-            const expected = String.fromCharCode(0x65, 0x0301);
-            /* c8 ignore start */
-            if (check !== expected) {
-                throw new Error("broken");
-            }
-            /* c8 ignore stop */
-        }
-        accum.push(form);
-    }
-    catch (error) { }
-    return accum;
-}, []);
-/**
- *  Throws if the normalization %%form%% is not supported.
- */
-function assertNormalize(form) {
-    errors_assert(_normalizeForms.indexOf(form) >= 0, "platform missing String.prototype.normalize", "UNSUPPORTED_OPERATION", {
-        operation: "String.prototype.normalize", info: { form }
-    });
-}
-/**
- *  Many classes use file-scoped values to guard the constructor,
- *  making it effectively private. This facilitates that pattern
- *  by ensuring the %%givenGaurd%% matches the file-scoped %%guard%%,
- *  throwing if not, indicating the %%className%% if provided.
- */
-function assertPrivate(givenGuard, guard, className) {
-    if (className == null) {
-        className = "";
-    }
-    if (givenGuard !== guard) {
-        let method = className, operation = "new";
-        if (className) {
-            method += ".";
-            operation += " " + className;
-        }
-        errors_assert(false, `private constructor; use ${method}from* methods`, "UNSUPPORTED_OPERATION", {
-            operation
-        });
-    }
-}
-//# sourceMappingURL=errors.js.map
-;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/utils/data.js
-/**
- *  Some data helpers.
- *
- *
- *  @_subsection api/utils:Data Helpers  [about-data]
- */
-
-function _getBytes(value, name, copy) {
-    if (value instanceof Uint8Array) {
-        if (copy) {
-            return new Uint8Array(value);
-        }
-        return value;
-    }
-    if (typeof (value) === "string" && value.match(/^0x([0-9a-f][0-9a-f])*$/i)) {
-        const result = new Uint8Array((value.length - 2) / 2);
-        let offset = 2;
-        for (let i = 0; i < result.length; i++) {
-            result[i] = parseInt(value.substring(offset, offset + 2), 16);
-            offset += 2;
-        }
-        return result;
-    }
-    errors_assertArgument(false, "invalid BytesLike value", name || "value", value);
-}
-/**
- *  Get a typed Uint8Array for %%value%%. If already a Uint8Array
- *  the original %%value%% is returned; if a copy is required use
- *  [[getBytesCopy]].
- *
- *  @see: getBytesCopy
- */
-function data_getBytes(value, name) {
-    return _getBytes(value, name, false);
-}
-/**
- *  Get a typed Uint8Array for %%value%%, creating a copy if necessary
- *  to prevent any modifications of the returned value from being
- *  reflected elsewhere.
- *
- *  @see: getBytes
- */
-function getBytesCopy(value, name) {
-    return _getBytes(value, name, true);
-}
-/**
- *  Returns true if %%value%% is a valid [[HexString]].
- *
- *  If %%length%% is ``true`` or a //number//, it also checks that
- *  %%value%% is a valid [[DataHexString]] of %%length%% (if a //number//)
- *  bytes of data (e.g. ``0x1234`` is 2 bytes).
- */
-function data_isHexString(value, length) {
-    if (typeof (value) !== "string" || !value.match(/^0x[0-9A-Fa-f]*$/)) {
-        return false;
-    }
-    if (typeof (length) === "number" && value.length !== 2 + 2 * length) {
-        return false;
-    }
-    if (length === true && (value.length % 2) !== 0) {
-        return false;
-    }
-    return true;
-}
-/**
- *  Returns true if %%value%% is a valid representation of arbitrary
- *  data (i.e. a valid [[DataHexString]] or a Uint8Array).
- */
-function isBytesLike(value) {
-    return (data_isHexString(value, true) || (value instanceof Uint8Array));
-}
-const HexCharacters = "0123456789abcdef";
-/**
- *  Returns a [[DataHexString]] representation of %%data%%.
- */
-function hexlify(data) {
-    const bytes = data_getBytes(data);
-    let result = "0x";
-    for (let i = 0; i < bytes.length; i++) {
-        const v = bytes[i];
-        result += HexCharacters[(v & 0xf0) >> 4] + HexCharacters[v & 0x0f];
-    }
-    return result;
-}
-/**
- *  Returns a [[DataHexString]] by concatenating all values
- *  within %%data%%.
- */
-function data_concat(datas) {
-    return "0x" + datas.map((d) => hexlify(d).substring(2)).join("");
-}
-/**
- *  Returns the length of %%data%%, in bytes.
- */
-function dataLength(data) {
-    if (data_isHexString(data, true)) {
-        return (data.length - 2) / 2;
-    }
-    return data_getBytes(data).length;
-}
-/**
- *  Returns a [[DataHexString]] by slicing %%data%% from the %%start%%
- *  offset to the %%end%% offset.
- *
- *  By default %%start%% is 0 and %%end%% is the length of %%data%%.
- */
-function data_dataSlice(data, start, end) {
-    const bytes = data_getBytes(data);
-    if (end != null && end > bytes.length) {
-        errors_assert(false, "cannot slice beyond data bounds", "BUFFER_OVERRUN", {
-            buffer: bytes, length: bytes.length, offset: end
-        });
-    }
-    return hexlify(bytes.slice((start == null) ? 0 : start, (end == null) ? bytes.length : end));
-}
-/**
- *  Return the [[DataHexString]] result by stripping all **leading**
- ** zero bytes from %%data%%.
- */
-function stripZerosLeft(data) {
-    let bytes = hexlify(data).substring(2);
-    while (bytes.startsWith("00")) {
-        bytes = bytes.substring(2);
-    }
-    return "0x" + bytes;
-}
-function zeroPad(data, length, left) {
-    const bytes = data_getBytes(data);
-    errors_assert(length >= bytes.length, "padding exceeds data length", "BUFFER_OVERRUN", {
-        buffer: new Uint8Array(bytes),
-        length: length,
-        offset: length + 1
-    });
-    const result = new Uint8Array(length);
-    result.fill(0);
-    if (left) {
-        result.set(bytes, length - bytes.length);
-    }
-    else {
-        result.set(bytes, 0);
-    }
-    return hexlify(result);
-}
-/**
- *  Return the [[DataHexString]] of %%data%% padded on the **left**
- *  to %%length%% bytes.
- *
- *  If %%data%% already exceeds %%length%%, a [[BufferOverrunError]] is
- *  thrown.
- *
- *  This pads data the same as **values** are in Solidity
- *  (e.g. ``uint128``).
- */
-function data_zeroPadValue(data, length) {
-    return zeroPad(data, length, true);
-}
-/**
- *  Return the [[DataHexString]] of %%data%% padded on the **right**
- *  to %%length%% bytes.
- *
- *  If %%data%% already exceeds %%length%%, a [[BufferOverrunError]] is
- *  thrown.
- *
- *  This pads data the same as **bytes** are in Solidity
- *  (e.g. ``bytes16``).
- */
-function zeroPadBytes(data, length) {
-    return zeroPad(data, length, false);
-}
-//# sourceMappingURL=data.js.map
-;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/utils/maths.js
-/**
- *  Some mathematic operations.
- *
- *  @_subsection: api/utils:Math Helpers  [about-maths]
- */
-
-
-const BN_0 = BigInt(0);
-const BN_1 = BigInt(1);
-//const BN_Max256 = (BN_1 << BigInt(256)) - BN_1;
-// IEEE 754 support 53-bits of mantissa
-const maxValue = 0x1fffffffffffff;
-/**
- *  Convert %%value%% from a twos-compliment representation of %%width%%
- *  bits to its value.
- *
- *  If the highest bit is ``1``, the result will be negative.
- */
-function fromTwos(_value, _width) {
-    const value = getUint(_value, "value");
-    const width = BigInt(getNumber(_width, "width"));
-    errors_assert((value >> width) === BN_0, "overflow", "NUMERIC_FAULT", {
-        operation: "fromTwos", fault: "overflow", value: _value
-    });
-    // Top bit set; treat as a negative value
-    if (value >> (width - BN_1)) {
-        const mask = (BN_1 << width) - BN_1;
-        return -(((~value) & mask) + BN_1);
-    }
-    return value;
-}
-/**
- *  Convert %%value%% to a twos-compliment representation of
- *  %%width%% bits.
- *
- *  The result will always be positive.
- */
-function toTwos(_value, _width) {
-    let value = getBigInt(_value, "value");
-    const width = BigInt(getNumber(_width, "width"));
-    const limit = (BN_1 << (width - BN_1));
-    if (value < BN_0) {
-        value = -value;
-        errors_assert(value <= limit, "too low", "NUMERIC_FAULT", {
-            operation: "toTwos", fault: "overflow", value: _value
-        });
-        const mask = (BN_1 << width) - BN_1;
-        return ((~value) & mask) + BN_1;
-    }
-    else {
-        errors_assert(value < limit, "too high", "NUMERIC_FAULT", {
-            operation: "toTwos", fault: "overflow", value: _value
-        });
-    }
-    return value;
-}
-/**
- *  Mask %%value%% with a bitmask of %%bits%% ones.
- */
-function mask(_value, _bits) {
-    const value = getUint(_value, "value");
-    const bits = BigInt(getNumber(_bits, "bits"));
-    return value & ((BN_1 << bits) - BN_1);
-}
-/**
- *  Gets a BigInt from %%value%%. If it is an invalid value for
- *  a BigInt, then an ArgumentError will be thrown for %%name%%.
- */
-function getBigInt(value, name) {
-    switch (typeof (value)) {
-        case "bigint": return value;
-        case "number":
-            errors_assertArgument(Number.isInteger(value), "underflow", name || "value", value);
-            errors_assertArgument(value >= -maxValue && value <= maxValue, "overflow", name || "value", value);
-            return BigInt(value);
-        case "string":
-            try {
-                if (value === "") {
-                    throw new Error("empty string");
-                }
-                if (value[0] === "-" && value[1] !== "-") {
-                    return -BigInt(value.substring(1));
-                }
-                return BigInt(value);
-            }
-            catch (e) {
-                errors_assertArgument(false, `invalid BigNumberish string: ${e.message}`, name || "value", value);
-            }
-    }
-    errors_assertArgument(false, "invalid BigNumberish value", name || "value", value);
-}
-function getUint(value, name) {
-    const result = getBigInt(value, name);
-    errors_assert(result >= BN_0, "unsigned value cannot be negative", "NUMERIC_FAULT", {
-        fault: "overflow", operation: "getUint", value
-    });
-    return result;
-}
-const Nibbles = "0123456789abcdef";
-/*
- * Converts %%value%% to a BigInt. If %%value%% is a Uint8Array, it
- * is treated as Big Endian data.
- */
-function toBigInt(value) {
-    if (value instanceof Uint8Array) {
-        let result = "0x0";
-        for (const v of value) {
-            result += Nibbles[v >> 4];
-            result += Nibbles[v & 0x0f];
-        }
-        return BigInt(result);
-    }
-    return getBigInt(value);
-}
-/**
- *  Gets a //number// from %%value%%. If it is an invalid value for
- *  a //number//, then an ArgumentError will be thrown for %%name%%.
- */
-function getNumber(value, name) {
-    switch (typeof (value)) {
-        case "bigint":
-            errors_assertArgument(value >= -maxValue && value <= maxValue, "overflow", name || "value", value);
-            return Number(value);
-        case "number":
-            errors_assertArgument(Number.isInteger(value), "underflow", name || "value", value);
-            errors_assertArgument(value >= -maxValue && value <= maxValue, "overflow", name || "value", value);
-            return value;
-        case "string":
-            try {
-                if (value === "") {
-                    throw new Error("empty string");
-                }
-                return getNumber(BigInt(value), name);
-            }
-            catch (e) {
-                errors_assertArgument(false, `invalid numeric string: ${e.message}`, name || "value", value);
-            }
-    }
-    errors_assertArgument(false, "invalid numeric value", name || "value", value);
-}
-/**
- *  Converts %%value%% to a number. If %%value%% is a Uint8Array, it
- *  is treated as Big Endian data. Throws if the value is not safe.
- */
-function toNumber(value) {
-    return getNumber(toBigInt(value));
-}
-/**
- *  Converts %%value%% to a Big Endian hexstring, optionally padded to
- *  %%width%% bytes.
- */
-function toBeHex(_value, _width) {
-    const value = getUint(_value, "value");
-    let result = value.toString(16);
-    if (_width == null) {
-        // Ensure the value is of even length
-        if (result.length % 2) {
-            result = "0" + result;
-        }
-    }
-    else {
-        const width = getNumber(_width, "width");
-        errors_assert(width * 2 >= result.length, `value exceeds width (${width} bits)`, "NUMERIC_FAULT", {
-            operation: "toBeHex",
-            fault: "overflow",
-            value: _value
-        });
-        // Pad the value to the required width
-        while (result.length < (width * 2)) {
-            result = "0" + result;
-        }
-    }
-    return "0x" + result;
-}
-/**
- *  Converts %%value%% to a Big Endian Uint8Array.
- */
-function toBeArray(_value) {
-    const value = getUint(_value, "value");
-    if (value === BN_0) {
-        return new Uint8Array([]);
-    }
-    let hex = value.toString(16);
-    if (hex.length % 2) {
-        hex = "0" + hex;
-    }
-    const result = new Uint8Array(hex.length / 2);
-    for (let i = 0; i < result.length; i++) {
-        const offset = i * 2;
-        result[i] = parseInt(hex.substring(offset, offset + 2), 16);
-    }
-    return result;
-}
-/**
- *  Returns a [[HexString]] for %%value%% safe to use as a //Quantity//.
- *
- *  A //Quantity// does not have and leading 0 values unless the value is
- *  the literal value `0x0`. This is most commonly used for JSSON-RPC
- *  numeric values.
- */
-function toQuantity(value) {
-    let result = hexlify(isBytesLike(value) ? value : toBeArray(value)).substring(2);
-    while (result.startsWith("0")) {
-        result = result.substring(1);
-    }
-    if (result === "") {
-        result = "0";
-    }
-    return "0x" + result;
-}
-//# sourceMappingURL=maths.js.map
-;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/abi/coders/abstract-coder.js
-
-/**
- * @_ignore:
- */
-const WordSize = 32;
-const Padding = new Uint8Array(WordSize);
-// Properties used to immediate pass through to the underlying object
-// - `then` is used to detect if an object is a Promise for await
-const passProperties = ["then"];
-const _guard = {};
-function throwError(name, error) {
-    const wrapped = new Error(`deferred error during ABI decoding triggered accessing ${name}`);
-    wrapped.error = error;
-    throw wrapped;
-}
-/**
- *  A [[Result]] is a sub-class of Array, which allows accessing any
- *  of its values either positionally by its index or, if keys are
- *  provided by its name.
- *
- *  @_docloc: api/abi
- */
-class Result extends Array {
-    #names;
-    /**
-     *  @private
-     */
-    constructor(...args) {
-        // To properly sub-class Array so the other built-in
-        // functions work, the constructor has to behave fairly
-        // well. So, in the event we are created via fromItems()
-        // we build the read-only Result object we want, but on
-        // any other input, we use the default constructor
-        // constructor(guard: any, items: Array<any>, keys?: Array<null | string>);
-        const guard = args[0];
-        let items = args[1];
-        let names = (args[2] || []).slice();
-        let wrap = true;
-        if (guard !== _guard) {
-            items = args;
-            names = [];
-            wrap = false;
-        }
-        // Can't just pass in ...items since an array of length 1
-        // is a special case in the super.
-        super(items.length);
-        items.forEach((item, index) => { this[index] = item; });
-        // Find all unique keys
-        const nameCounts = names.reduce((accum, name) => {
-            if (typeof (name) === "string") {
-                accum.set(name, (accum.get(name) || 0) + 1);
-            }
-            return accum;
-        }, (new Map()));
-        // Remove any key thats not unique
-        this.#names = Object.freeze(items.map((item, index) => {
-            const name = names[index];
-            if (name != null && nameCounts.get(name) === 1) {
-                return name;
-            }
-            return null;
-        }));
-        if (!wrap) {
-            return;
-        }
-        // A wrapped Result is immutable
-        Object.freeze(this);
-        // Proxy indices and names so we can trap deferred errors
-        return new Proxy(this, {
-            get: (target, prop, receiver) => {
-                if (typeof (prop) === "string") {
-                    // Index accessor
-                    if (prop.match(/^[0-9]+$/)) {
-                        const index = getNumber(prop, "%index");
-                        if (index < 0 || index >= this.length) {
-                            throw new RangeError("out of result range");
-                        }
-                        const item = target[index];
-                        if (item instanceof Error) {
-                            throwError(`index ${index}`, item);
-                        }
-                        return item;
-                    }
-                    // Pass important checks (like `then` for Promise) through
-                    if (passProperties.indexOf(prop) >= 0) {
-                        return Reflect.get(target, prop, receiver);
-                    }
-                    const value = target[prop];
-                    if (value instanceof Function) {
-                        // Make sure functions work with private variables
-                        // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy#no_private_property_forwarding
-                        return function (...args) {
-                            return value.apply((this === receiver) ? target : this, args);
-                        };
-                    }
-                    else if (!(prop in target)) {
-                        // Possible name accessor
-                        return target.getValue.apply((this === receiver) ? target : this, [prop]);
-                    }
-                }
-                return Reflect.get(target, prop, receiver);
-            }
-        });
-    }
-    /**
-     *  Returns the Result as a normal Array.
-     *
-     *  This will throw if there are any outstanding deferred
-     *  errors.
-     */
-    toArray() {
-        const result = [];
-        this.forEach((item, index) => {
-            if (item instanceof Error) {
-                throwError(`index ${index}`, item);
-            }
-            result.push(item);
-        });
-        return result;
-    }
-    /**
-     *  Returns the Result as an Object with each name-value pair.
-     *
-     *  This will throw if any value is unnamed, or if there are
-     *  any outstanding deferred errors.
-     */
-    toObject() {
-        return this.#names.reduce((accum, name, index) => {
-            errors_assert(name != null, "value at index ${ index } unnamed", "UNSUPPORTED_OPERATION", {
-                operation: "toObject()"
-            });
-            // Add values for names that don't conflict
-            if (!(name in accum)) {
-                accum[name] = this.getValue(name);
-            }
-            return accum;
-        }, {});
-    }
-    /**
-     *  @_ignore
-     */
-    slice(start, end) {
-        if (start == null) {
-            start = 0;
-        }
-        if (start < 0) {
-            start += this.length;
-            if (start < 0) {
-                start = 0;
-            }
-        }
-        if (end == null) {
-            end = this.length;
-        }
-        if (end < 0) {
-            end += this.length;
-            if (end < 0) {
-                end = 0;
-            }
-        }
-        if (end > this.length) {
-            end = this.length;
-        }
-        const result = [], names = [];
-        for (let i = start; i < end; i++) {
-            result.push(this[i]);
-            names.push(this.#names[i]);
-        }
-        return new Result(_guard, result, names);
-    }
-    /**
-     *  @_ignore
-     */
-    filter(callback, thisArg) {
-        const result = [], names = [];
-        for (let i = 0; i < this.length; i++) {
-            const item = this[i];
-            if (item instanceof Error) {
-                throwError(`index ${i}`, item);
-            }
-            if (callback.call(thisArg, item, i, this)) {
-                result.push(item);
-                names.push(this.#names[i]);
-            }
-        }
-        return new Result(_guard, result, names);
-    }
-    /**
-     *  Returns the value for %%name%%.
-     *
-     *  Since it is possible to have a key whose name conflicts with
-     *  a method on a [[Result]] or its superclass Array, or any
-     *  JavaScript keyword, this ensures all named values are still
-     *  accessible by name.
-     */
-    getValue(name) {
-        const index = this.#names.indexOf(name);
-        if (index === -1) {
-            return undefined;
-        }
-        const value = this[index];
-        if (value instanceof Error) {
-            throwError(`property ${JSON.stringify(name)}`, value.error);
-        }
-        return value;
-    }
-    /**
-     *  Creates a new [[Result]] for %%items%% with each entry
-     *  also accessible by its corresponding name in %%keys%%.
-     */
-    static fromItems(items, keys) {
-        return new Result(_guard, items, keys);
-    }
-}
-/**
- *  Returns all errors found in a [[Result]].
- *
- *  Since certain errors encountered when creating a [[Result]] do
- *  not impact the ability to continue parsing data, they are
- *  deferred until they are actually accessed. Hence a faulty string
- *  in an Event that is never used does not impact the program flow.
- *
- *  However, sometimes it may be useful to access, identify or
- *  validate correctness of a [[Result]].
- *
- *  @_docloc api/abi
- */
-function checkResultErrors(result) {
-    // Find the first error (if any)
-    const errors = [];
-    const checkErrors = function (path, object) {
-        if (!Array.isArray(object)) {
-            return;
-        }
-        for (let key in object) {
-            const childPath = path.slice();
-            childPath.push(key);
-            try {
-                checkErrors(childPath, object[key]);
-            }
-            catch (error) {
-                errors.push({ path: childPath, error: error });
-            }
-        }
-    };
-    checkErrors([], result);
-    return errors;
-}
-function getValue(value) {
-    let bytes = toBeArray(value);
-    errors_assert(bytes.length <= WordSize, "value out-of-bounds", "BUFFER_OVERRUN", { buffer: bytes, length: WordSize, offset: bytes.length });
-    if (bytes.length !== WordSize) {
-        bytes = getBytesCopy(data_concat([Padding.slice(bytes.length % WordSize), bytes]));
-    }
-    return bytes;
-}
-/**
- *  @_ignore
- */
-class Coder {
-    // The coder name:
-    //   - address, uint256, tuple, array, etc.
-    name;
-    // The fully expanded type, including composite types:
-    //   - address, uint256, tuple(address,bytes), uint256[3][4][],  etc.
-    type;
-    // The localName bound in the signature, in this example it is "baz":
-    //   - tuple(address foo, uint bar) baz
-    localName;
-    // Whether this type is dynamic:
-    //  - Dynamic: bytes, string, address[], tuple(boolean[]), etc.
-    //  - Not Dynamic: address, uint256, boolean[3], tuple(address, uint8)
-    dynamic;
-    constructor(name, type, localName, dynamic) {
-        properties_defineProperties(this, { name, type, localName, dynamic }, {
-            name: "string", type: "string", localName: "string", dynamic: "boolean"
-        });
-    }
-    _throwError(message, value) {
-        errors_assertArgument(false, message, this.localName, value);
-    }
-}
-/**
- *  @_ignore
- */
-class Writer {
-    // An array of WordSize lengthed objects to concatenation
-    #data;
-    #dataLength;
-    constructor() {
-        this.#data = [];
-        this.#dataLength = 0;
-    }
-    get data() {
-        return data_concat(this.#data);
-    }
-    get length() { return this.#dataLength; }
-    #writeData(data) {
-        this.#data.push(data);
-        this.#dataLength += data.length;
-        return data.length;
-    }
-    appendWriter(writer) {
-        return this.#writeData(getBytesCopy(writer.data));
-    }
-    // Arrayish item; pad on the right to *nearest* WordSize
-    writeBytes(value) {
-        let bytes = getBytesCopy(value);
-        const paddingOffset = bytes.length % WordSize;
-        if (paddingOffset) {
-            bytes = getBytesCopy(data_concat([bytes, Padding.slice(paddingOffset)]));
-        }
-        return this.#writeData(bytes);
-    }
-    // Numeric item; pad on the left *to* WordSize
-    writeValue(value) {
-        return this.#writeData(getValue(value));
-    }
-    // Inserts a numeric place-holder, returning a callback that can
-    // be used to asjust the value later
-    writeUpdatableValue() {
-        const offset = this.#data.length;
-        this.#data.push(Padding);
-        this.#dataLength += WordSize;
-        return (value) => {
-            this.#data[offset] = getValue(value);
-        };
-    }
-}
-/**
- *  @_ignore
- */
-class Reader {
-    // Allows incomplete unpadded data to be read; otherwise an error
-    // is raised if attempting to overrun the buffer. This is required
-    // to deal with an old Solidity bug, in which event data for
-    // external (not public thoguh) was tightly packed.
-    allowLoose;
-    #data;
-    #offset;
-    constructor(data, allowLoose) {
-        properties_defineProperties(this, { allowLoose: !!allowLoose });
-        this.#data = getBytesCopy(data);
-        this.#offset = 0;
-    }
-    get data() { return hexlify(this.#data); }
-    get dataLength() { return this.#data.length; }
-    get consumed() { return this.#offset; }
-    get bytes() { return new Uint8Array(this.#data); }
-    #peekBytes(offset, length, loose) {
-        let alignedLength = Math.ceil(length / WordSize) * WordSize;
-        if (this.#offset + alignedLength > this.#data.length) {
-            if (this.allowLoose && loose && this.#offset + length <= this.#data.length) {
-                alignedLength = length;
-            }
-            else {
-                errors_assert(false, "data out-of-bounds", "BUFFER_OVERRUN", {
-                    buffer: getBytesCopy(this.#data),
-                    length: this.#data.length,
-                    offset: this.#offset + alignedLength
-                });
-            }
-        }
-        return this.#data.slice(this.#offset, this.#offset + alignedLength);
-    }
-    // Create a sub-reader with the same underlying data, but offset
-    subReader(offset) {
-        return new Reader(this.#data.slice(this.#offset + offset), this.allowLoose);
-    }
-    // Read bytes
-    readBytes(length, loose) {
-        let bytes = this.#peekBytes(0, length, !!loose);
-        this.#offset += bytes.length;
-        // @TODO: Make sure the length..end bytes are all 0?
-        return bytes.slice(0, length);
-    }
-    // Read a numeric values
-    readValue() {
-        return toBigInt(this.readBytes(WordSize));
-    }
-    readIndex() {
-        return toNumber(this.readBytes(WordSize));
-    }
-}
-//# sourceMappingURL=abstract-coder.js.map
 ;// CONCATENATED MODULE: ./node_modules/@noble/hashes/esm/_assert.js
 function number(n) {
     if (!Number.isSafeInteger(n) || n < 0)
@@ -6881,6 +5836,453 @@ const genShake = (suffix, blockLen, outputLen) => wrapConstructorWithOpts((opts 
 const shake128 = genShake(0x1f, 168, 128 / 8);
 const shake256 = genShake(0x1f, 136, 256 / 8);
 
+;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/_version.js
+/* Do NOT modify this file; see /src.ts/_admin/update-version.ts */
+/**
+ *  The current version of Ethers.
+ */
+const version = "6.3.0";
+//# sourceMappingURL=_version.js.map
+;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/utils/properties.js
+/**
+ *  Property helper functions.
+ *
+ *  @_subsection api/utils:Properties  [about-properties]
+ */
+function checkType(value, type, name) {
+    const types = type.split("|").map(t => t.trim());
+    for (let i = 0; i < types.length; i++) {
+        switch (type) {
+            case "any":
+                return;
+            case "bigint":
+            case "boolean":
+            case "number":
+            case "string":
+                if (typeof (value) === type) {
+                    return;
+                }
+        }
+    }
+    const error = new Error(`invalid value for type ${type}`);
+    error.code = "INVALID_ARGUMENT";
+    error.argument = `value.${name}`;
+    error.value = value;
+    throw error;
+}
+/**
+ *  Resolves to a new object that is a copy of %%value%%, but with all
+ *  values resolved.
+ */
+async function resolveProperties(value) {
+    const keys = Object.keys(value);
+    const results = await Promise.all(keys.map((k) => Promise.resolve(value[k])));
+    return results.reduce((accum, v, index) => {
+        accum[keys[index]] = v;
+        return accum;
+    }, {});
+}
+/**
+ *  Assigns the %%values%% to %%target%% as read-only values.
+ *
+ *  It %%types%% is specified, the values are checked.
+ */
+function properties_defineProperties(target, values, types) {
+    for (let key in values) {
+        let value = values[key];
+        const type = (types ? types[key] : null);
+        if (type) {
+            checkType(value, type, key);
+        }
+        Object.defineProperty(target, key, { enumerable: true, value, writable: false });
+    }
+}
+//# sourceMappingURL=properties.js.map
+;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/utils/errors.js
+/**
+ *  About Errors.
+ *
+ *  @_section: api/utils/errors:Errors  [about-errors]
+ */
+
+
+function stringify(value) {
+    if (value == null) {
+        return "null";
+    }
+    if (Array.isArray(value)) {
+        return "[ " + (value.map(stringify)).join(", ") + " ]";
+    }
+    if (value instanceof Uint8Array) {
+        const HEX = "0123456789abcdef";
+        let result = "0x";
+        for (let i = 0; i < value.length; i++) {
+            result += HEX[value[i] >> 4];
+            result += HEX[value[i] & 0xf];
+        }
+        return result;
+    }
+    if (typeof (value) === "object" && typeof (value.toJSON) === "function") {
+        return stringify(value.toJSON());
+    }
+    switch (typeof (value)) {
+        case "boolean":
+        case "symbol":
+            return value.toString();
+        case "bigint":
+            return BigInt(value).toString();
+        case "number":
+            return (value).toString();
+        case "string":
+            return JSON.stringify(value);
+        case "object": {
+            const keys = Object.keys(value);
+            keys.sort();
+            return "{ " + keys.map((k) => `${stringify(k)}: ${stringify(value[k])}`).join(", ") + " }";
+        }
+    }
+    return `[ COULD NOT SERIALIZE ]`;
+}
+/**
+ *  Returns true if the %%error%% matches an error thrown by ethers
+ *  that matches the error %%code%%.
+ *
+ *  In TypeScript envornoments, this can be used to check that %%error%%
+ *  matches an EthersError type, which means the expected properties will
+ *  be set.
+ *
+ *  @See [ErrorCodes](api:ErrorCode)
+ *  @example
+ *    try {
+ *      // code....
+ *    } catch (e) {
+ *      if (isError(e, "CALL_EXCEPTION")) {
+ *          // The Type Guard has validated this object
+ *          console.log(e.data);
+ *      }
+ *    }
+ */
+function isError(error, code) {
+    return (error && error.code === code);
+}
+/**
+ *  Returns true if %%error%% is a [[CallExceptionError].
+ */
+function isCallException(error) {
+    return isError(error, "CALL_EXCEPTION");
+}
+/**
+ *  Returns a new Error configured to the format ethers emits errors, with
+ *  the %%message%%, [[api:ErrorCode]] %%code%% and additioanl properties
+ *  for the corresponding EthersError.
+ *
+ *  Each error in ethers includes the version of ethers, a
+ *  machine-readable [[ErrorCode]], and depneding on %%code%%, additional
+ *  required properties. The error message will also include the %%meeage%%,
+ *  ethers version, %%code%% and all aditional properties, serialized.
+ */
+function makeError(message, code, info) {
+    {
+        const details = [];
+        if (info) {
+            if ("message" in info || "code" in info || "name" in info) {
+                throw new Error(`value will overwrite populated values: ${stringify(info)}`);
+            }
+            for (const key in info) {
+                const value = (info[key]);
+                //                try {
+                details.push(key + "=" + stringify(value));
+                //                } catch (error: any) {
+                //                console.log("MMM", error.message);
+                //                    details.push(key + "=[could not serialize object]");
+                //                }
+            }
+        }
+        details.push(`code=${code}`);
+        details.push(`version=${version}`);
+        if (details.length) {
+            message += " (" + details.join(", ") + ")";
+        }
+    }
+    let error;
+    switch (code) {
+        case "INVALID_ARGUMENT":
+            error = new TypeError(message);
+            break;
+        case "NUMERIC_FAULT":
+        case "BUFFER_OVERRUN":
+            error = new RangeError(message);
+            break;
+        default:
+            error = new Error(message);
+    }
+    properties_defineProperties(error, { code });
+    if (info) {
+        Object.assign(error, info);
+    }
+    return error;
+}
+/**
+ *  Throws an EthersError with %%message%%, %%code%% and additional error
+ *  %%info%% when %%check%% is falsish..
+ *
+ *  @see [[api:makeError]]
+ */
+function errors_assert(check, message, code, info) {
+    if (!check) {
+        throw makeError(message, code, info);
+    }
+}
+/**
+ *  A simple helper to simply ensuring provided arguments match expected
+ *  constraints, throwing if not.
+ *
+ *  In TypeScript environments, the %%check%% has been asserted true, so
+ *  any further code does not need additional compile-time checks.
+ */
+function errors_assertArgument(check, message, name, value) {
+    errors_assert(check, message, "INVALID_ARGUMENT", { argument: name, value: value });
+}
+function assertArgumentCount(count, expectedCount, message) {
+    if (message == null) {
+        message = "";
+    }
+    if (message) {
+        message = ": " + message;
+    }
+    errors_assert(count >= expectedCount, "missing arguemnt" + message, "MISSING_ARGUMENT", {
+        count: count,
+        expectedCount: expectedCount
+    });
+    errors_assert(count <= expectedCount, "too many arguemnts" + message, "UNEXPECTED_ARGUMENT", {
+        count: count,
+        expectedCount: expectedCount
+    });
+}
+const _normalizeForms = ["NFD", "NFC", "NFKD", "NFKC"].reduce((accum, form) => {
+    try {
+        // General test for normalize
+        /* c8 ignore start */
+        if ("test".normalize(form) !== "test") {
+            throw new Error("bad");
+        }
+        ;
+        /* c8 ignore stop */
+        if (form === "NFD") {
+            const check = String.fromCharCode(0xe9).normalize("NFD");
+            const expected = String.fromCharCode(0x65, 0x0301);
+            /* c8 ignore start */
+            if (check !== expected) {
+                throw new Error("broken");
+            }
+            /* c8 ignore stop */
+        }
+        accum.push(form);
+    }
+    catch (error) { }
+    return accum;
+}, []);
+/**
+ *  Throws if the normalization %%form%% is not supported.
+ */
+function assertNormalize(form) {
+    errors_assert(_normalizeForms.indexOf(form) >= 0, "platform missing String.prototype.normalize", "UNSUPPORTED_OPERATION", {
+        operation: "String.prototype.normalize", info: { form }
+    });
+}
+/**
+ *  Many classes use file-scoped values to guard the constructor,
+ *  making it effectively private. This facilitates that pattern
+ *  by ensuring the %%givenGaurd%% matches the file-scoped %%guard%%,
+ *  throwing if not, indicating the %%className%% if provided.
+ */
+function assertPrivate(givenGuard, guard, className) {
+    if (className == null) {
+        className = "";
+    }
+    if (givenGuard !== guard) {
+        let method = className, operation = "new";
+        if (className) {
+            method += ".";
+            operation += " " + className;
+        }
+        errors_assert(false, `private constructor; use ${method}from* methods`, "UNSUPPORTED_OPERATION", {
+            operation
+        });
+    }
+}
+//# sourceMappingURL=errors.js.map
+;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/utils/data.js
+/**
+ *  Some data helpers.
+ *
+ *
+ *  @_subsection api/utils:Data Helpers  [about-data]
+ */
+
+function _getBytes(value, name, copy) {
+    if (value instanceof Uint8Array) {
+        if (copy) {
+            return new Uint8Array(value);
+        }
+        return value;
+    }
+    if (typeof (value) === "string" && value.match(/^0x([0-9a-f][0-9a-f])*$/i)) {
+        const result = new Uint8Array((value.length - 2) / 2);
+        let offset = 2;
+        for (let i = 0; i < result.length; i++) {
+            result[i] = parseInt(value.substring(offset, offset + 2), 16);
+            offset += 2;
+        }
+        return result;
+    }
+    errors_assertArgument(false, "invalid BytesLike value", name || "value", value);
+}
+/**
+ *  Get a typed Uint8Array for %%value%%. If already a Uint8Array
+ *  the original %%value%% is returned; if a copy is required use
+ *  [[getBytesCopy]].
+ *
+ *  @see: getBytesCopy
+ */
+function data_getBytes(value, name) {
+    return _getBytes(value, name, false);
+}
+/**
+ *  Get a typed Uint8Array for %%value%%, creating a copy if necessary
+ *  to prevent any modifications of the returned value from being
+ *  reflected elsewhere.
+ *
+ *  @see: getBytes
+ */
+function getBytesCopy(value, name) {
+    return _getBytes(value, name, true);
+}
+/**
+ *  Returns true if %%value%% is a valid [[HexString]].
+ *
+ *  If %%length%% is ``true`` or a //number//, it also checks that
+ *  %%value%% is a valid [[DataHexString]] of %%length%% (if a //number//)
+ *  bytes of data (e.g. ``0x1234`` is 2 bytes).
+ */
+function data_isHexString(value, length) {
+    if (typeof (value) !== "string" || !value.match(/^0x[0-9A-Fa-f]*$/)) {
+        return false;
+    }
+    if (typeof (length) === "number" && value.length !== 2 + 2 * length) {
+        return false;
+    }
+    if (length === true && (value.length % 2) !== 0) {
+        return false;
+    }
+    return true;
+}
+/**
+ *  Returns true if %%value%% is a valid representation of arbitrary
+ *  data (i.e. a valid [[DataHexString]] or a Uint8Array).
+ */
+function isBytesLike(value) {
+    return (data_isHexString(value, true) || (value instanceof Uint8Array));
+}
+const HexCharacters = "0123456789abcdef";
+/**
+ *  Returns a [[DataHexString]] representation of %%data%%.
+ */
+function hexlify(data) {
+    const bytes = data_getBytes(data);
+    let result = "0x";
+    for (let i = 0; i < bytes.length; i++) {
+        const v = bytes[i];
+        result += HexCharacters[(v & 0xf0) >> 4] + HexCharacters[v & 0x0f];
+    }
+    return result;
+}
+/**
+ *  Returns a [[DataHexString]] by concatenating all values
+ *  within %%data%%.
+ */
+function data_concat(datas) {
+    return "0x" + datas.map((d) => hexlify(d).substring(2)).join("");
+}
+/**
+ *  Returns the length of %%data%%, in bytes.
+ */
+function dataLength(data) {
+    if (data_isHexString(data, true)) {
+        return (data.length - 2) / 2;
+    }
+    return data_getBytes(data).length;
+}
+/**
+ *  Returns a [[DataHexString]] by slicing %%data%% from the %%start%%
+ *  offset to the %%end%% offset.
+ *
+ *  By default %%start%% is 0 and %%end%% is the length of %%data%%.
+ */
+function data_dataSlice(data, start, end) {
+    const bytes = data_getBytes(data);
+    if (end != null && end > bytes.length) {
+        errors_assert(false, "cannot slice beyond data bounds", "BUFFER_OVERRUN", {
+            buffer: bytes, length: bytes.length, offset: end
+        });
+    }
+    return hexlify(bytes.slice((start == null) ? 0 : start, (end == null) ? bytes.length : end));
+}
+/**
+ *  Return the [[DataHexString]] result by stripping all **leading**
+ ** zero bytes from %%data%%.
+ */
+function stripZerosLeft(data) {
+    let bytes = hexlify(data).substring(2);
+    while (bytes.startsWith("00")) {
+        bytes = bytes.substring(2);
+    }
+    return "0x" + bytes;
+}
+function zeroPad(data, length, left) {
+    const bytes = data_getBytes(data);
+    errors_assert(length >= bytes.length, "padding exceeds data length", "BUFFER_OVERRUN", {
+        buffer: new Uint8Array(bytes),
+        length: length,
+        offset: length + 1
+    });
+    const result = new Uint8Array(length);
+    result.fill(0);
+    if (left) {
+        result.set(bytes, length - bytes.length);
+    }
+    else {
+        result.set(bytes, 0);
+    }
+    return hexlify(result);
+}
+/**
+ *  Return the [[DataHexString]] of %%data%% padded on the **left**
+ *  to %%length%% bytes.
+ *
+ *  If %%data%% already exceeds %%length%%, a [[BufferOverrunError]] is
+ *  thrown.
+ *
+ *  This pads data the same as **values** are in Solidity
+ *  (e.g. ``uint128``).
+ */
+function data_zeroPadValue(data, length) {
+    return zeroPad(data, length, true);
+}
+/**
+ *  Return the [[DataHexString]] of %%data%% padded on the **right**
+ *  to %%length%% bytes.
+ *
+ *  If %%data%% already exceeds %%length%%, a [[BufferOverrunError]] is
+ *  thrown.
+ *
+ *  This pads data the same as **bytes** are in Solidity
+ *  (e.g. ``bytes16``).
+ */
+function zeroPadBytes(data, length) {
+    return zeroPad(data, length, false);
+}
+//# sourceMappingURL=data.js.map
 ;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/crypto/keccak.js
 /**
  *  Cryptographic hashing functions
@@ -6933,7 +6335,7 @@ Object.freeze(keccak_keccak256);
 ;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/address/address.js
 
 
-const address_BN_0 = BigInt(0);
+const BN_0 = BigInt(0);
 const BN_36 = BigInt(36);
 function getChecksumAddress(address) {
     //    if (!isHexString(address, 20)) {
@@ -6995,7 +6397,7 @@ const Base36 = (function () {
 })();
 function fromBase36(value) {
     value = value.toLowerCase();
-    let result = address_BN_0;
+    let result = BN_0;
     for (let i = 0; i < value.length; i++) {
         result = result * BN_36 + Base36[value[i]];
     }
@@ -7087,6 +6489,1023 @@ function getIcapAddress(address) {
     return "XE" + ibanChecksum("XE00" + base36) + base36;
 }
 //# sourceMappingURL=address.js.map
+;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/transaction/accesslist.js
+
+
+function accessSetify(addr, storageKeys) {
+    return {
+        address: address_getAddress(addr),
+        storageKeys: storageKeys.map((storageKey, index) => {
+            errors_assertArgument(data_isHexString(storageKey, 32), "invalid slot", `storageKeys[${index}]`, storageKey);
+            return storageKey.toLowerCase();
+        })
+    };
+}
+/**
+ *  Returns a [[AccessList]] from any ethers-supported access-list structure.
+ */
+function accessListify(value) {
+    if (Array.isArray(value)) {
+        return value.map((set, index) => {
+            if (Array.isArray(set)) {
+                errors_assertArgument(set.length === 2, "invalid slot set", `value[${index}]`, set);
+                return accessSetify(set[0], set[1]);
+            }
+            errors_assertArgument(set != null && typeof (set) === "object", "invalid address-slot set", "value", value);
+            return accessSetify(set.address, set.storageKeys);
+        });
+    }
+    errors_assertArgument(value != null && typeof (value) === "object", "invalid access list", "value", value);
+    const result = Object.keys(value).map((addr) => {
+        const storageKeys = value[addr].reduce((accum, storageKey) => {
+            accum[storageKey] = true;
+            return accum;
+        }, {});
+        return accessSetify(addr, Object.keys(storageKeys).sort());
+    });
+    result.sort((a, b) => (a.address.localeCompare(b.address)));
+    return result;
+}
+//# sourceMappingURL=accesslist.js.map
+;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/utils/maths.js
+/**
+ *  Some mathematic operations.
+ *
+ *  @_subsection: api/utils:Math Helpers  [about-maths]
+ */
+
+
+const maths_BN_0 = BigInt(0);
+const BN_1 = BigInt(1);
+//const BN_Max256 = (BN_1 << BigInt(256)) - BN_1;
+// IEEE 754 support 53-bits of mantissa
+const maxValue = 0x1fffffffffffff;
+/**
+ *  Convert %%value%% from a twos-compliment representation of %%width%%
+ *  bits to its value.
+ *
+ *  If the highest bit is ``1``, the result will be negative.
+ */
+function fromTwos(_value, _width) {
+    const value = getUint(_value, "value");
+    const width = BigInt(getNumber(_width, "width"));
+    errors_assert((value >> width) === maths_BN_0, "overflow", "NUMERIC_FAULT", {
+        operation: "fromTwos", fault: "overflow", value: _value
+    });
+    // Top bit set; treat as a negative value
+    if (value >> (width - BN_1)) {
+        const mask = (BN_1 << width) - BN_1;
+        return -(((~value) & mask) + BN_1);
+    }
+    return value;
+}
+/**
+ *  Convert %%value%% to a twos-compliment representation of
+ *  %%width%% bits.
+ *
+ *  The result will always be positive.
+ */
+function toTwos(_value, _width) {
+    let value = getBigInt(_value, "value");
+    const width = BigInt(getNumber(_width, "width"));
+    const limit = (BN_1 << (width - BN_1));
+    if (value < maths_BN_0) {
+        value = -value;
+        errors_assert(value <= limit, "too low", "NUMERIC_FAULT", {
+            operation: "toTwos", fault: "overflow", value: _value
+        });
+        const mask = (BN_1 << width) - BN_1;
+        return ((~value) & mask) + BN_1;
+    }
+    else {
+        errors_assert(value < limit, "too high", "NUMERIC_FAULT", {
+            operation: "toTwos", fault: "overflow", value: _value
+        });
+    }
+    return value;
+}
+/**
+ *  Mask %%value%% with a bitmask of %%bits%% ones.
+ */
+function mask(_value, _bits) {
+    const value = getUint(_value, "value");
+    const bits = BigInt(getNumber(_bits, "bits"));
+    return value & ((BN_1 << bits) - BN_1);
+}
+/**
+ *  Gets a BigInt from %%value%%. If it is an invalid value for
+ *  a BigInt, then an ArgumentError will be thrown for %%name%%.
+ */
+function getBigInt(value, name) {
+    switch (typeof (value)) {
+        case "bigint": return value;
+        case "number":
+            errors_assertArgument(Number.isInteger(value), "underflow", name || "value", value);
+            errors_assertArgument(value >= -maxValue && value <= maxValue, "overflow", name || "value", value);
+            return BigInt(value);
+        case "string":
+            try {
+                if (value === "") {
+                    throw new Error("empty string");
+                }
+                if (value[0] === "-" && value[1] !== "-") {
+                    return -BigInt(value.substring(1));
+                }
+                return BigInt(value);
+            }
+            catch (e) {
+                errors_assertArgument(false, `invalid BigNumberish string: ${e.message}`, name || "value", value);
+            }
+    }
+    errors_assertArgument(false, "invalid BigNumberish value", name || "value", value);
+}
+function getUint(value, name) {
+    const result = getBigInt(value, name);
+    errors_assert(result >= maths_BN_0, "unsigned value cannot be negative", "NUMERIC_FAULT", {
+        fault: "overflow", operation: "getUint", value
+    });
+    return result;
+}
+const Nibbles = "0123456789abcdef";
+/*
+ * Converts %%value%% to a BigInt. If %%value%% is a Uint8Array, it
+ * is treated as Big Endian data.
+ */
+function toBigInt(value) {
+    if (value instanceof Uint8Array) {
+        let result = "0x0";
+        for (const v of value) {
+            result += Nibbles[v >> 4];
+            result += Nibbles[v & 0x0f];
+        }
+        return BigInt(result);
+    }
+    return getBigInt(value);
+}
+/**
+ *  Gets a //number// from %%value%%. If it is an invalid value for
+ *  a //number//, then an ArgumentError will be thrown for %%name%%.
+ */
+function getNumber(value, name) {
+    switch (typeof (value)) {
+        case "bigint":
+            errors_assertArgument(value >= -maxValue && value <= maxValue, "overflow", name || "value", value);
+            return Number(value);
+        case "number":
+            errors_assertArgument(Number.isInteger(value), "underflow", name || "value", value);
+            errors_assertArgument(value >= -maxValue && value <= maxValue, "overflow", name || "value", value);
+            return value;
+        case "string":
+            try {
+                if (value === "") {
+                    throw new Error("empty string");
+                }
+                return getNumber(BigInt(value), name);
+            }
+            catch (e) {
+                errors_assertArgument(false, `invalid numeric string: ${e.message}`, name || "value", value);
+            }
+    }
+    errors_assertArgument(false, "invalid numeric value", name || "value", value);
+}
+/**
+ *  Converts %%value%% to a number. If %%value%% is a Uint8Array, it
+ *  is treated as Big Endian data. Throws if the value is not safe.
+ */
+function toNumber(value) {
+    return getNumber(toBigInt(value));
+}
+/**
+ *  Converts %%value%% to a Big Endian hexstring, optionally padded to
+ *  %%width%% bytes.
+ */
+function toBeHex(_value, _width) {
+    const value = getUint(_value, "value");
+    let result = value.toString(16);
+    if (_width == null) {
+        // Ensure the value is of even length
+        if (result.length % 2) {
+            result = "0" + result;
+        }
+    }
+    else {
+        const width = getNumber(_width, "width");
+        errors_assert(width * 2 >= result.length, `value exceeds width (${width} bits)`, "NUMERIC_FAULT", {
+            operation: "toBeHex",
+            fault: "overflow",
+            value: _value
+        });
+        // Pad the value to the required width
+        while (result.length < (width * 2)) {
+            result = "0" + result;
+        }
+    }
+    return "0x" + result;
+}
+/**
+ *  Converts %%value%% to a Big Endian Uint8Array.
+ */
+function toBeArray(_value) {
+    const value = getUint(_value, "value");
+    if (value === maths_BN_0) {
+        return new Uint8Array([]);
+    }
+    let hex = value.toString(16);
+    if (hex.length % 2) {
+        hex = "0" + hex;
+    }
+    const result = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < result.length; i++) {
+        const offset = i * 2;
+        result[i] = parseInt(hex.substring(offset, offset + 2), 16);
+    }
+    return result;
+}
+/**
+ *  Returns a [[HexString]] for %%value%% safe to use as a //Quantity//.
+ *
+ *  A //Quantity// does not have and leading 0 values unless the value is
+ *  the literal value `0x0`. This is most commonly used for JSSON-RPC
+ *  numeric values.
+ */
+function toQuantity(value) {
+    let result = hexlify(isBytesLike(value) ? value : toBeArray(value)).substring(2);
+    while (result.startsWith("0")) {
+        result = result.substring(1);
+    }
+    if (result === "") {
+        result = "0";
+    }
+    return "0x" + result;
+}
+//# sourceMappingURL=maths.js.map
+;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/providers/plugins-network.js
+
+
+const EnsAddress = "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e";
+class NetworkPlugin {
+    name;
+    constructor(name) {
+        properties_defineProperties(this, { name });
+    }
+    clone() {
+        return new NetworkPlugin(this.name);
+    }
+}
+class GasCostPlugin extends NetworkPlugin {
+    effectiveBlock;
+    txBase;
+    txCreate;
+    txDataZero;
+    txDataNonzero;
+    txAccessListStorageKey;
+    txAccessListAddress;
+    constructor(effectiveBlock, costs) {
+        if (effectiveBlock == null) {
+            effectiveBlock = 0;
+        }
+        super(`org.ethers.network.plugins.GasCost#${(effectiveBlock || 0)}`);
+        const props = { effectiveBlock };
+        function set(name, nullish) {
+            let value = (costs || {})[name];
+            if (value == null) {
+                value = nullish;
+            }
+            errors_assertArgument(typeof (value) === "number", `invalud value for ${name}`, "costs", costs);
+            props[name] = value;
+        }
+        set("txBase", 21000);
+        set("txCreate", 32000);
+        set("txDataZero", 4);
+        set("txDataNonzero", 16);
+        set("txAccessListStorageKey", 1900);
+        set("txAccessListAddress", 2400);
+        properties_defineProperties(this, props);
+    }
+    clone() {
+        return new GasCostPlugin(this.effectiveBlock, this);
+    }
+}
+// Networks shoudl use this plugin to specify the contract address
+// and network necessary to resolve ENS names.
+class EnsPlugin extends NetworkPlugin {
+    // The ENS contract address
+    address;
+    // The network ID that the ENS contract lives on
+    targetNetwork;
+    constructor(address, targetNetwork) {
+        super("org.ethers.plugins.network.Ens");
+        properties_defineProperties(this, {
+            address: (address || EnsAddress),
+            targetNetwork: ((targetNetwork == null) ? 1 : targetNetwork)
+        });
+    }
+    clone() {
+        return new EnsPlugin(this.address, this.targetNetwork);
+    }
+}
+class FeeDataNetworkPlugin extends (/* unused pure expression or super */ null && (NetworkPlugin)) {
+    #feeDataFunc;
+    get feeDataFunc() {
+        return this.#feeDataFunc;
+    }
+    constructor(feeDataFunc) {
+        super("org.ethers.plugins.network.FeeData");
+        this.#feeDataFunc = feeDataFunc;
+    }
+    async getFeeData(provider) {
+        return await this.#feeDataFunc(provider);
+    }
+    clone() {
+        return new FeeDataNetworkPlugin(this.#feeDataFunc);
+    }
+}
+/*
+export class CustomBlockNetworkPlugin extends NetworkPlugin {
+    readonly #blockFunc: (provider: Provider, block: BlockParams<string>) => Block<string>;
+    readonly #blockWithTxsFunc: (provider: Provider, block: BlockParams<TransactionResponseParams>) => Block<TransactionResponse>;
+
+    constructor(blockFunc: (provider: Provider, block: BlockParams<string>) => Block<string>, blockWithTxsFunc: (provider: Provider, block: BlockParams<TransactionResponseParams>) => Block<TransactionResponse>) {
+        super("org.ethers.network-plugins.custom-block");
+        this.#blockFunc = blockFunc;
+        this.#blockWithTxsFunc = blockWithTxsFunc;
+    }
+
+    async getBlock(provider: Provider, block: BlockParams<string>): Promise<Block<string>> {
+        return await this.#blockFunc(provider, block);
+    }
+
+    async getBlockions(provider: Provider, block: BlockParams<TransactionResponseParams>): Promise<Block<TransactionResponse>> {
+        return await this.#blockWithTxsFunc(provider, block);
+    }
+
+    clone(): CustomBlockNetworkPlugin {
+        return new CustomBlockNetworkPlugin(this.#blockFunc, this.#blockWithTxsFunc);
+    }
+}
+*/
+//# sourceMappingURL=plugins-network.js.map
+;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/providers/network.js
+/**
+ *  About networks
+ *
+ *  @_subsection: api/providers:Networks  [networks]
+ */
+
+
+
+/* * * *
+// Networks which operation against an L2 can use this plugin to
+// specify how to access L1, for the purpose of resolving ENS,
+// for example.
+export class LayerOneConnectionPlugin extends NetworkPlugin {
+    readonly provider!: Provider;
+// @TODO: Rename to ChainAccess and allow for connecting to any chain
+    constructor(provider: Provider) {
+        super("org.ethers.plugins.layer-one-connection");
+        defineProperties<LayerOneConnectionPlugin>(this, { provider });
+    }
+
+    clone(): LayerOneConnectionPlugin {
+        return new LayerOneConnectionPlugin(this.provider);
+    }
+}
+*/
+/* * * *
+export class PriceOraclePlugin extends NetworkPlugin {
+    readonly address!: string;
+
+    constructor(address: string) {
+        super("org.ethers.plugins.price-oracle");
+        defineProperties<PriceOraclePlugin>(this, { address });
+    }
+
+    clone(): PriceOraclePlugin {
+        return new PriceOraclePlugin(this.address);
+    }
+}
+*/
+// Networks or clients with a higher need for security (such as clients
+// that may automatically make CCIP requests without user interaction)
+// can use this plugin to anonymize requests or intercept CCIP requests
+// to notify and/or receive authorization from the user
+/* * * *
+export type FetchDataFunc = (req: Frozen<FetchRequest>) => Promise<FetchRequest>;
+export class CcipPreflightPlugin extends NetworkPlugin {
+    readonly fetchData!: FetchDataFunc;
+
+    constructor(fetchData: FetchDataFunc) {
+        super("org.ethers.plugins.ccip-preflight");
+        defineProperties<CcipPreflightPlugin>(this, { fetchData });
+    }
+
+    clone(): CcipPreflightPlugin {
+        return new CcipPreflightPlugin(this.fetchData);
+    }
+}
+*/
+const Networks = new Map();
+// @TODO: Add a _ethersNetworkObj variable to better detect network ovjects
+class Network {
+    #name;
+    #chainId;
+    #plugins;
+    constructor(name, chainId) {
+        this.#name = name;
+        this.#chainId = getBigInt(chainId);
+        this.#plugins = new Map();
+    }
+    toJSON() {
+        return { name: this.name, chainId: this.chainId };
+    }
+    get name() { return this.#name; }
+    set name(value) { this.#name = value; }
+    get chainId() { return this.#chainId; }
+    set chainId(value) { this.#chainId = getBigInt(value, "chainId"); }
+    get plugins() {
+        return Array.from(this.#plugins.values());
+    }
+    attachPlugin(plugin) {
+        if (this.#plugins.get(plugin.name)) {
+            throw new Error(`cannot replace existing plugin: ${plugin.name} `);
+        }
+        this.#plugins.set(plugin.name, plugin.clone());
+        return this;
+    }
+    getPlugin(name) {
+        return (this.#plugins.get(name)) || null;
+    }
+    // Gets a list of Plugins which match basename, ignoring any fragment
+    getPlugins(basename) {
+        return (this.plugins.filter((p) => (p.name.split("#")[0] === basename)));
+    }
+    clone() {
+        const clone = new Network(this.name, this.chainId);
+        this.plugins.forEach((plugin) => {
+            clone.attachPlugin(plugin.clone());
+        });
+        return clone;
+    }
+    computeIntrinsicGas(tx) {
+        const costs = this.getPlugin("org.ethers.plugins.network.GasCost") || (new GasCostPlugin());
+        let gas = costs.txBase;
+        if (tx.to == null) {
+            gas += costs.txCreate;
+        }
+        if (tx.data) {
+            for (let i = 2; i < tx.data.length; i += 2) {
+                if (tx.data.substring(i, i + 2) === "00") {
+                    gas += costs.txDataZero;
+                }
+                else {
+                    gas += costs.txDataNonzero;
+                }
+            }
+        }
+        if (tx.accessList) {
+            const accessList = accessListify(tx.accessList);
+            for (const addr in accessList) {
+                gas += costs.txAccessListAddress + costs.txAccessListStorageKey * accessList[addr].storageKeys.length;
+            }
+        }
+        return gas;
+    }
+    /**
+     *  Returns a new Network for the %%network%% name or chainId.
+     */
+    static from(network) {
+        injectCommonNetworks();
+        // Default network
+        if (network == null) {
+            return Network.from("mainnet");
+        }
+        // Canonical name or chain ID
+        if (typeof (network) === "number") {
+            network = BigInt(network);
+        }
+        if (typeof (network) === "string" || typeof (network) === "bigint") {
+            const networkFunc = Networks.get(network);
+            if (networkFunc) {
+                return networkFunc();
+            }
+            if (typeof (network) === "bigint") {
+                return new Network("unknown", network);
+            }
+            errors_assertArgument(false, "unknown network", "network", network);
+        }
+        // Clonable with network-like abilities
+        if (typeof (network.clone) === "function") {
+            const clone = network.clone();
+            //if (typeof(network.name) !== "string" || typeof(network.chainId) !== "number") {
+            //}
+            return clone;
+        }
+        // Networkish
+        if (typeof (network) === "object") {
+            errors_assertArgument(typeof (network.name) === "string" && typeof (network.chainId) === "number", "invalid network object name or chainId", "network", network);
+            const custom = new Network((network.name), (network.chainId));
+            if (network.ensAddress || network.ensNetwork != null) {
+                custom.attachPlugin(new EnsPlugin(network.ensAddress, network.ensNetwork));
+            }
+            //if ((<any>network).layerOneConnection) {
+            //    custom.attachPlugin(new LayerOneConnectionPlugin((<any>network).layerOneConnection));
+            //}
+            return custom;
+        }
+        errors_assertArgument(false, "invalid network", "network", network);
+    }
+    /**
+     *  Register %%nameOrChainId%% with a function which returns
+     *  an instance of a Network representing that chain.
+     */
+    static register(nameOrChainId, networkFunc) {
+        if (typeof (nameOrChainId) === "number") {
+            nameOrChainId = BigInt(nameOrChainId);
+        }
+        const existing = Networks.get(nameOrChainId);
+        if (existing) {
+            errors_assertArgument(false, `conflicting network for ${JSON.stringify(existing.name)}`, "nameOrChainId", nameOrChainId);
+        }
+        Networks.set(nameOrChainId, networkFunc);
+    }
+}
+// See: https://chainlist.org
+let injected = false;
+function injectCommonNetworks() {
+    if (injected) {
+        return;
+    }
+    injected = true;
+    /// Register popular Ethereum networks
+    function registerEth(name, chainId, options) {
+        const func = function () {
+            const network = new Network(name, chainId);
+            // We use 0 to disable ENS
+            if (options.ensNetwork != null) {
+                network.attachPlugin(new EnsPlugin(null, options.ensNetwork));
+            }
+            if (options.priorityFee) {
+                //                network.attachPlugin(new MaxPriorityFeePlugin(options.priorityFee));
+            }
+            /*
+                        if (options.etherscan) {
+                            const { url, apiKey } = options.etherscan;
+                            network.attachPlugin(new EtherscanPlugin(url, apiKey));
+                        }
+            */
+            network.attachPlugin(new GasCostPlugin());
+            return network;
+        };
+        // Register the network by name and chain ID
+        Network.register(name, func);
+        Network.register(chainId, func);
+        if (options.altNames) {
+            options.altNames.forEach((name) => {
+                Network.register(name, func);
+            });
+        }
+    }
+    registerEth("mainnet", 1, { ensNetwork: 1, altNames: ["homestead"] });
+    registerEth("ropsten", 3, { ensNetwork: 3 });
+    registerEth("rinkeby", 4, { ensNetwork: 4 });
+    registerEth("goerli", 5, { ensNetwork: 5 });
+    registerEth("kovan", 42, { ensNetwork: 42 });
+    registerEth("sepolia", 11155111, {});
+    registerEth("classic", 61, {});
+    registerEth("classicKotti", 6, {});
+    registerEth("xdai", 100, { ensNetwork: 1 });
+    registerEth("optimism", 10, {
+        ensNetwork: 1,
+        etherscan: { url: "https:/\/api-optimistic.etherscan.io/" }
+    });
+    registerEth("optimism-goerli", 420, {
+        etherscan: { url: "https:/\/api-goerli-optimistic.etherscan.io/" }
+    });
+    registerEth("arbitrum", 42161, {
+        ensNetwork: 1,
+        etherscan: { url: "https:/\/api.arbiscan.io/" }
+    });
+    registerEth("arbitrum-goerli", 421613, {
+        etherscan: { url: "https:/\/api-goerli.arbiscan.io/" }
+    });
+    // Polygon has a 35 gwei maxPriorityFee requirement
+    registerEth("matic", 137, {
+        ensNetwork: 1,
+        //        priorityFee: 35000000000,
+        etherscan: {
+            //            apiKey: "W6T8DJW654GNTQ34EFEYYP3EZD9DD27CT7",
+            url: "https:/\/api.polygonscan.com/"
+        }
+    });
+    registerEth("matic-mumbai", 80001, {
+        altNames: ["maticMumbai", "maticmum"],
+        //        priorityFee: 35000000000,
+        etherscan: {
+            //            apiKey: "W6T8DJW654GNTQ34EFEYYP3EZD9DD27CT7",
+            url: "https:/\/api-testnet.polygonscan.com/"
+        }
+    });
+    registerEth("bnb", 56, {
+        ensNetwork: 1,
+        etherscan: {
+            //            apiKey: "EVTS3CU31AATZV72YQ55TPGXGMVIFUQ9M9",
+            url: "http:/\/api.bscscan.com"
+        }
+    });
+    registerEth("bnbt", 97, {
+        etherscan: {
+            //            apiKey: "EVTS3CU31AATZV72YQ55TPGXGMVIFUQ9M9",
+            url: "http:/\/api-testnet.bscscan.com"
+        }
+    });
+}
+//# sourceMappingURL=network.js.map
+;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/abi/coders/abstract-coder.js
+
+/**
+ * @_ignore:
+ */
+const WordSize = 32;
+const Padding = new Uint8Array(WordSize);
+// Properties used to immediate pass through to the underlying object
+// - `then` is used to detect if an object is a Promise for await
+const passProperties = ["then"];
+const _guard = {};
+function throwError(name, error) {
+    const wrapped = new Error(`deferred error during ABI decoding triggered accessing ${name}`);
+    wrapped.error = error;
+    throw wrapped;
+}
+/**
+ *  A [[Result]] is a sub-class of Array, which allows accessing any
+ *  of its values either positionally by its index or, if keys are
+ *  provided by its name.
+ *
+ *  @_docloc: api/abi
+ */
+class Result extends Array {
+    #names;
+    /**
+     *  @private
+     */
+    constructor(...args) {
+        // To properly sub-class Array so the other built-in
+        // functions work, the constructor has to behave fairly
+        // well. So, in the event we are created via fromItems()
+        // we build the read-only Result object we want, but on
+        // any other input, we use the default constructor
+        // constructor(guard: any, items: Array<any>, keys?: Array<null | string>);
+        const guard = args[0];
+        let items = args[1];
+        let names = (args[2] || []).slice();
+        let wrap = true;
+        if (guard !== _guard) {
+            items = args;
+            names = [];
+            wrap = false;
+        }
+        // Can't just pass in ...items since an array of length 1
+        // is a special case in the super.
+        super(items.length);
+        items.forEach((item, index) => { this[index] = item; });
+        // Find all unique keys
+        const nameCounts = names.reduce((accum, name) => {
+            if (typeof (name) === "string") {
+                accum.set(name, (accum.get(name) || 0) + 1);
+            }
+            return accum;
+        }, (new Map()));
+        // Remove any key thats not unique
+        this.#names = Object.freeze(items.map((item, index) => {
+            const name = names[index];
+            if (name != null && nameCounts.get(name) === 1) {
+                return name;
+            }
+            return null;
+        }));
+        if (!wrap) {
+            return;
+        }
+        // A wrapped Result is immutable
+        Object.freeze(this);
+        // Proxy indices and names so we can trap deferred errors
+        return new Proxy(this, {
+            get: (target, prop, receiver) => {
+                if (typeof (prop) === "string") {
+                    // Index accessor
+                    if (prop.match(/^[0-9]+$/)) {
+                        const index = getNumber(prop, "%index");
+                        if (index < 0 || index >= this.length) {
+                            throw new RangeError("out of result range");
+                        }
+                        const item = target[index];
+                        if (item instanceof Error) {
+                            throwError(`index ${index}`, item);
+                        }
+                        return item;
+                    }
+                    // Pass important checks (like `then` for Promise) through
+                    if (passProperties.indexOf(prop) >= 0) {
+                        return Reflect.get(target, prop, receiver);
+                    }
+                    const value = target[prop];
+                    if (value instanceof Function) {
+                        // Make sure functions work with private variables
+                        // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy#no_private_property_forwarding
+                        return function (...args) {
+                            return value.apply((this === receiver) ? target : this, args);
+                        };
+                    }
+                    else if (!(prop in target)) {
+                        // Possible name accessor
+                        return target.getValue.apply((this === receiver) ? target : this, [prop]);
+                    }
+                }
+                return Reflect.get(target, prop, receiver);
+            }
+        });
+    }
+    /**
+     *  Returns the Result as a normal Array.
+     *
+     *  This will throw if there are any outstanding deferred
+     *  errors.
+     */
+    toArray() {
+        const result = [];
+        this.forEach((item, index) => {
+            if (item instanceof Error) {
+                throwError(`index ${index}`, item);
+            }
+            result.push(item);
+        });
+        return result;
+    }
+    /**
+     *  Returns the Result as an Object with each name-value pair.
+     *
+     *  This will throw if any value is unnamed, or if there are
+     *  any outstanding deferred errors.
+     */
+    toObject() {
+        return this.#names.reduce((accum, name, index) => {
+            errors_assert(name != null, "value at index ${ index } unnamed", "UNSUPPORTED_OPERATION", {
+                operation: "toObject()"
+            });
+            // Add values for names that don't conflict
+            if (!(name in accum)) {
+                accum[name] = this.getValue(name);
+            }
+            return accum;
+        }, {});
+    }
+    /**
+     *  @_ignore
+     */
+    slice(start, end) {
+        if (start == null) {
+            start = 0;
+        }
+        if (start < 0) {
+            start += this.length;
+            if (start < 0) {
+                start = 0;
+            }
+        }
+        if (end == null) {
+            end = this.length;
+        }
+        if (end < 0) {
+            end += this.length;
+            if (end < 0) {
+                end = 0;
+            }
+        }
+        if (end > this.length) {
+            end = this.length;
+        }
+        const result = [], names = [];
+        for (let i = start; i < end; i++) {
+            result.push(this[i]);
+            names.push(this.#names[i]);
+        }
+        return new Result(_guard, result, names);
+    }
+    /**
+     *  @_ignore
+     */
+    filter(callback, thisArg) {
+        const result = [], names = [];
+        for (let i = 0; i < this.length; i++) {
+            const item = this[i];
+            if (item instanceof Error) {
+                throwError(`index ${i}`, item);
+            }
+            if (callback.call(thisArg, item, i, this)) {
+                result.push(item);
+                names.push(this.#names[i]);
+            }
+        }
+        return new Result(_guard, result, names);
+    }
+    /**
+     *  Returns the value for %%name%%.
+     *
+     *  Since it is possible to have a key whose name conflicts with
+     *  a method on a [[Result]] or its superclass Array, or any
+     *  JavaScript keyword, this ensures all named values are still
+     *  accessible by name.
+     */
+    getValue(name) {
+        const index = this.#names.indexOf(name);
+        if (index === -1) {
+            return undefined;
+        }
+        const value = this[index];
+        if (value instanceof Error) {
+            throwError(`property ${JSON.stringify(name)}`, value.error);
+        }
+        return value;
+    }
+    /**
+     *  Creates a new [[Result]] for %%items%% with each entry
+     *  also accessible by its corresponding name in %%keys%%.
+     */
+    static fromItems(items, keys) {
+        return new Result(_guard, items, keys);
+    }
+}
+/**
+ *  Returns all errors found in a [[Result]].
+ *
+ *  Since certain errors encountered when creating a [[Result]] do
+ *  not impact the ability to continue parsing data, they are
+ *  deferred until they are actually accessed. Hence a faulty string
+ *  in an Event that is never used does not impact the program flow.
+ *
+ *  However, sometimes it may be useful to access, identify or
+ *  validate correctness of a [[Result]].
+ *
+ *  @_docloc api/abi
+ */
+function checkResultErrors(result) {
+    // Find the first error (if any)
+    const errors = [];
+    const checkErrors = function (path, object) {
+        if (!Array.isArray(object)) {
+            return;
+        }
+        for (let key in object) {
+            const childPath = path.slice();
+            childPath.push(key);
+            try {
+                checkErrors(childPath, object[key]);
+            }
+            catch (error) {
+                errors.push({ path: childPath, error: error });
+            }
+        }
+    };
+    checkErrors([], result);
+    return errors;
+}
+function getValue(value) {
+    let bytes = toBeArray(value);
+    errors_assert(bytes.length <= WordSize, "value out-of-bounds", "BUFFER_OVERRUN", { buffer: bytes, length: WordSize, offset: bytes.length });
+    if (bytes.length !== WordSize) {
+        bytes = getBytesCopy(data_concat([Padding.slice(bytes.length % WordSize), bytes]));
+    }
+    return bytes;
+}
+/**
+ *  @_ignore
+ */
+class Coder {
+    // The coder name:
+    //   - address, uint256, tuple, array, etc.
+    name;
+    // The fully expanded type, including composite types:
+    //   - address, uint256, tuple(address,bytes), uint256[3][4][],  etc.
+    type;
+    // The localName bound in the signature, in this example it is "baz":
+    //   - tuple(address foo, uint bar) baz
+    localName;
+    // Whether this type is dynamic:
+    //  - Dynamic: bytes, string, address[], tuple(boolean[]), etc.
+    //  - Not Dynamic: address, uint256, boolean[3], tuple(address, uint8)
+    dynamic;
+    constructor(name, type, localName, dynamic) {
+        properties_defineProperties(this, { name, type, localName, dynamic }, {
+            name: "string", type: "string", localName: "string", dynamic: "boolean"
+        });
+    }
+    _throwError(message, value) {
+        errors_assertArgument(false, message, this.localName, value);
+    }
+}
+/**
+ *  @_ignore
+ */
+class Writer {
+    // An array of WordSize lengthed objects to concatenation
+    #data;
+    #dataLength;
+    constructor() {
+        this.#data = [];
+        this.#dataLength = 0;
+    }
+    get data() {
+        return data_concat(this.#data);
+    }
+    get length() { return this.#dataLength; }
+    #writeData(data) {
+        this.#data.push(data);
+        this.#dataLength += data.length;
+        return data.length;
+    }
+    appendWriter(writer) {
+        return this.#writeData(getBytesCopy(writer.data));
+    }
+    // Arrayish item; pad on the right to *nearest* WordSize
+    writeBytes(value) {
+        let bytes = getBytesCopy(value);
+        const paddingOffset = bytes.length % WordSize;
+        if (paddingOffset) {
+            bytes = getBytesCopy(data_concat([bytes, Padding.slice(paddingOffset)]));
+        }
+        return this.#writeData(bytes);
+    }
+    // Numeric item; pad on the left *to* WordSize
+    writeValue(value) {
+        return this.#writeData(getValue(value));
+    }
+    // Inserts a numeric place-holder, returning a callback that can
+    // be used to asjust the value later
+    writeUpdatableValue() {
+        const offset = this.#data.length;
+        this.#data.push(Padding);
+        this.#dataLength += WordSize;
+        return (value) => {
+            this.#data[offset] = getValue(value);
+        };
+    }
+}
+/**
+ *  @_ignore
+ */
+class Reader {
+    // Allows incomplete unpadded data to be read; otherwise an error
+    // is raised if attempting to overrun the buffer. This is required
+    // to deal with an old Solidity bug, in which event data for
+    // external (not public thoguh) was tightly packed.
+    allowLoose;
+    #data;
+    #offset;
+    constructor(data, allowLoose) {
+        properties_defineProperties(this, { allowLoose: !!allowLoose });
+        this.#data = getBytesCopy(data);
+        this.#offset = 0;
+    }
+    get data() { return hexlify(this.#data); }
+    get dataLength() { return this.#data.length; }
+    get consumed() { return this.#offset; }
+    get bytes() { return new Uint8Array(this.#data); }
+    #peekBytes(offset, length, loose) {
+        let alignedLength = Math.ceil(length / WordSize) * WordSize;
+        if (this.#offset + alignedLength > this.#data.length) {
+            if (this.allowLoose && loose && this.#offset + length <= this.#data.length) {
+                alignedLength = length;
+            }
+            else {
+                errors_assert(false, "data out-of-bounds", "BUFFER_OVERRUN", {
+                    buffer: getBytesCopy(this.#data),
+                    length: this.#data.length,
+                    offset: this.#offset + alignedLength
+                });
+            }
+        }
+        return this.#data.slice(this.#offset, this.#offset + alignedLength);
+    }
+    // Create a sub-reader with the same underlying data, but offset
+    subReader(offset) {
+        return new Reader(this.#data.slice(this.#offset + offset), this.allowLoose);
+    }
+    // Read bytes
+    readBytes(length, loose) {
+        let bytes = this.#peekBytes(0, length, !!loose);
+        this.#offset += bytes.length;
+        // @TODO: Make sure the length..end bytes are all 0?
+        return bytes.slice(0, length);
+    }
+    // Read a numeric values
+    readValue() {
+        return toBigInt(this.readBytes(WordSize));
+    }
+    readIndex() {
+        return toNumber(this.readBytes(WordSize));
+    }
+}
+//# sourceMappingURL=abstract-coder.js.map
 ;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/abi/typed.js
 /**
  *  A Typed object allows a value to have its type explicitly
@@ -9954,44 +10373,6 @@ function verifyTypedData(domain, types, value, signature) {
     return recoverAddress(TypedDataEncoder.hash(domain, types, value), signature);
 }
 //# sourceMappingURL=typed-data.js.map
-;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/transaction/accesslist.js
-
-
-function accessSetify(addr, storageKeys) {
-    return {
-        address: address_getAddress(addr),
-        storageKeys: storageKeys.map((storageKey, index) => {
-            errors_assertArgument(data_isHexString(storageKey, 32), "invalid slot", `storageKeys[${index}]`, storageKey);
-            return storageKey.toLowerCase();
-        })
-    };
-}
-/**
- *  Returns a [[AccessList]] from any ethers-supported access-list structure.
- */
-function accessListify(value) {
-    if (Array.isArray(value)) {
-        return value.map((set, index) => {
-            if (Array.isArray(set)) {
-                errors_assertArgument(set.length === 2, "invalid slot set", `value[${index}]`, set);
-                return accessSetify(set[0], set[1]);
-            }
-            errors_assertArgument(set != null && typeof (set) === "object", "invalid address-slot set", "value", value);
-            return accessSetify(set.address, set.storageKeys);
-        });
-    }
-    errors_assertArgument(value != null && typeof (value) === "object", "invalid access list", "value", value);
-    const result = Object.keys(value).map((addr) => {
-        const storageKeys = value[addr].reduce((accum, storageKey) => {
-            accum[storageKey] = true;
-            return accum;
-        }, {});
-        return accessSetify(addr, Object.keys(storageKeys).sort());
-    });
-    result.sort((a, b) => (a.address.localeCompare(b.address)));
-    return result;
-}
-//# sourceMappingURL=accesslist.js.map
 ;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/utils/base64-browser.js
 // utils/base64-browser
 
@@ -19086,387 +19467,6 @@ function formatTransactionResponse(value) {
     return result;
 }
 //# sourceMappingURL=format.js.map
-;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/providers/plugins-network.js
-
-
-const EnsAddress = "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e";
-class NetworkPlugin {
-    name;
-    constructor(name) {
-        properties_defineProperties(this, { name });
-    }
-    clone() {
-        return new NetworkPlugin(this.name);
-    }
-}
-class GasCostPlugin extends NetworkPlugin {
-    effectiveBlock;
-    txBase;
-    txCreate;
-    txDataZero;
-    txDataNonzero;
-    txAccessListStorageKey;
-    txAccessListAddress;
-    constructor(effectiveBlock, costs) {
-        if (effectiveBlock == null) {
-            effectiveBlock = 0;
-        }
-        super(`org.ethers.network.plugins.GasCost#${(effectiveBlock || 0)}`);
-        const props = { effectiveBlock };
-        function set(name, nullish) {
-            let value = (costs || {})[name];
-            if (value == null) {
-                value = nullish;
-            }
-            errors_assertArgument(typeof (value) === "number", `invalud value for ${name}`, "costs", costs);
-            props[name] = value;
-        }
-        set("txBase", 21000);
-        set("txCreate", 32000);
-        set("txDataZero", 4);
-        set("txDataNonzero", 16);
-        set("txAccessListStorageKey", 1900);
-        set("txAccessListAddress", 2400);
-        properties_defineProperties(this, props);
-    }
-    clone() {
-        return new GasCostPlugin(this.effectiveBlock, this);
-    }
-}
-// Networks shoudl use this plugin to specify the contract address
-// and network necessary to resolve ENS names.
-class EnsPlugin extends NetworkPlugin {
-    // The ENS contract address
-    address;
-    // The network ID that the ENS contract lives on
-    targetNetwork;
-    constructor(address, targetNetwork) {
-        super("org.ethers.plugins.network.Ens");
-        properties_defineProperties(this, {
-            address: (address || EnsAddress),
-            targetNetwork: ((targetNetwork == null) ? 1 : targetNetwork)
-        });
-    }
-    clone() {
-        return new EnsPlugin(this.address, this.targetNetwork);
-    }
-}
-class FeeDataNetworkPlugin extends (/* unused pure expression or super */ null && (NetworkPlugin)) {
-    #feeDataFunc;
-    get feeDataFunc() {
-        return this.#feeDataFunc;
-    }
-    constructor(feeDataFunc) {
-        super("org.ethers.plugins.network.FeeData");
-        this.#feeDataFunc = feeDataFunc;
-    }
-    async getFeeData(provider) {
-        return await this.#feeDataFunc(provider);
-    }
-    clone() {
-        return new FeeDataNetworkPlugin(this.#feeDataFunc);
-    }
-}
-/*
-export class CustomBlockNetworkPlugin extends NetworkPlugin {
-    readonly #blockFunc: (provider: Provider, block: BlockParams<string>) => Block<string>;
-    readonly #blockWithTxsFunc: (provider: Provider, block: BlockParams<TransactionResponseParams>) => Block<TransactionResponse>;
-
-    constructor(blockFunc: (provider: Provider, block: BlockParams<string>) => Block<string>, blockWithTxsFunc: (provider: Provider, block: BlockParams<TransactionResponseParams>) => Block<TransactionResponse>) {
-        super("org.ethers.network-plugins.custom-block");
-        this.#blockFunc = blockFunc;
-        this.#blockWithTxsFunc = blockWithTxsFunc;
-    }
-
-    async getBlock(provider: Provider, block: BlockParams<string>): Promise<Block<string>> {
-        return await this.#blockFunc(provider, block);
-    }
-
-    async getBlockions(provider: Provider, block: BlockParams<TransactionResponseParams>): Promise<Block<TransactionResponse>> {
-        return await this.#blockWithTxsFunc(provider, block);
-    }
-
-    clone(): CustomBlockNetworkPlugin {
-        return new CustomBlockNetworkPlugin(this.#blockFunc, this.#blockWithTxsFunc);
-    }
-}
-*/
-//# sourceMappingURL=plugins-network.js.map
-;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/providers/network.js
-/**
- *  About networks
- *
- *  @_subsection: api/providers:Networks  [networks]
- */
-
-
-
-/* * * *
-// Networks which operation against an L2 can use this plugin to
-// specify how to access L1, for the purpose of resolving ENS,
-// for example.
-export class LayerOneConnectionPlugin extends NetworkPlugin {
-    readonly provider!: Provider;
-// @TODO: Rename to ChainAccess and allow for connecting to any chain
-    constructor(provider: Provider) {
-        super("org.ethers.plugins.layer-one-connection");
-        defineProperties<LayerOneConnectionPlugin>(this, { provider });
-    }
-
-    clone(): LayerOneConnectionPlugin {
-        return new LayerOneConnectionPlugin(this.provider);
-    }
-}
-*/
-/* * * *
-export class PriceOraclePlugin extends NetworkPlugin {
-    readonly address!: string;
-
-    constructor(address: string) {
-        super("org.ethers.plugins.price-oracle");
-        defineProperties<PriceOraclePlugin>(this, { address });
-    }
-
-    clone(): PriceOraclePlugin {
-        return new PriceOraclePlugin(this.address);
-    }
-}
-*/
-// Networks or clients with a higher need for security (such as clients
-// that may automatically make CCIP requests without user interaction)
-// can use this plugin to anonymize requests or intercept CCIP requests
-// to notify and/or receive authorization from the user
-/* * * *
-export type FetchDataFunc = (req: Frozen<FetchRequest>) => Promise<FetchRequest>;
-export class CcipPreflightPlugin extends NetworkPlugin {
-    readonly fetchData!: FetchDataFunc;
-
-    constructor(fetchData: FetchDataFunc) {
-        super("org.ethers.plugins.ccip-preflight");
-        defineProperties<CcipPreflightPlugin>(this, { fetchData });
-    }
-
-    clone(): CcipPreflightPlugin {
-        return new CcipPreflightPlugin(this.fetchData);
-    }
-}
-*/
-const Networks = new Map();
-// @TODO: Add a _ethersNetworkObj variable to better detect network ovjects
-class Network {
-    #name;
-    #chainId;
-    #plugins;
-    constructor(name, chainId) {
-        this.#name = name;
-        this.#chainId = getBigInt(chainId);
-        this.#plugins = new Map();
-    }
-    toJSON() {
-        return { name: this.name, chainId: this.chainId };
-    }
-    get name() { return this.#name; }
-    set name(value) { this.#name = value; }
-    get chainId() { return this.#chainId; }
-    set chainId(value) { this.#chainId = getBigInt(value, "chainId"); }
-    get plugins() {
-        return Array.from(this.#plugins.values());
-    }
-    attachPlugin(plugin) {
-        if (this.#plugins.get(plugin.name)) {
-            throw new Error(`cannot replace existing plugin: ${plugin.name} `);
-        }
-        this.#plugins.set(plugin.name, plugin.clone());
-        return this;
-    }
-    getPlugin(name) {
-        return (this.#plugins.get(name)) || null;
-    }
-    // Gets a list of Plugins which match basename, ignoring any fragment
-    getPlugins(basename) {
-        return (this.plugins.filter((p) => (p.name.split("#")[0] === basename)));
-    }
-    clone() {
-        const clone = new Network(this.name, this.chainId);
-        this.plugins.forEach((plugin) => {
-            clone.attachPlugin(plugin.clone());
-        });
-        return clone;
-    }
-    computeIntrinsicGas(tx) {
-        const costs = this.getPlugin("org.ethers.plugins.network.GasCost") || (new GasCostPlugin());
-        let gas = costs.txBase;
-        if (tx.to == null) {
-            gas += costs.txCreate;
-        }
-        if (tx.data) {
-            for (let i = 2; i < tx.data.length; i += 2) {
-                if (tx.data.substring(i, i + 2) === "00") {
-                    gas += costs.txDataZero;
-                }
-                else {
-                    gas += costs.txDataNonzero;
-                }
-            }
-        }
-        if (tx.accessList) {
-            const accessList = accessListify(tx.accessList);
-            for (const addr in accessList) {
-                gas += costs.txAccessListAddress + costs.txAccessListStorageKey * accessList[addr].storageKeys.length;
-            }
-        }
-        return gas;
-    }
-    /**
-     *  Returns a new Network for the %%network%% name or chainId.
-     */
-    static from(network) {
-        injectCommonNetworks();
-        // Default network
-        if (network == null) {
-            return Network.from("mainnet");
-        }
-        // Canonical name or chain ID
-        if (typeof (network) === "number") {
-            network = BigInt(network);
-        }
-        if (typeof (network) === "string" || typeof (network) === "bigint") {
-            const networkFunc = Networks.get(network);
-            if (networkFunc) {
-                return networkFunc();
-            }
-            if (typeof (network) === "bigint") {
-                return new Network("unknown", network);
-            }
-            errors_assertArgument(false, "unknown network", "network", network);
-        }
-        // Clonable with network-like abilities
-        if (typeof (network.clone) === "function") {
-            const clone = network.clone();
-            //if (typeof(network.name) !== "string" || typeof(network.chainId) !== "number") {
-            //}
-            return clone;
-        }
-        // Networkish
-        if (typeof (network) === "object") {
-            errors_assertArgument(typeof (network.name) === "string" && typeof (network.chainId) === "number", "invalid network object name or chainId", "network", network);
-            const custom = new Network((network.name), (network.chainId));
-            if (network.ensAddress || network.ensNetwork != null) {
-                custom.attachPlugin(new EnsPlugin(network.ensAddress, network.ensNetwork));
-            }
-            //if ((<any>network).layerOneConnection) {
-            //    custom.attachPlugin(new LayerOneConnectionPlugin((<any>network).layerOneConnection));
-            //}
-            return custom;
-        }
-        errors_assertArgument(false, "invalid network", "network", network);
-    }
-    /**
-     *  Register %%nameOrChainId%% with a function which returns
-     *  an instance of a Network representing that chain.
-     */
-    static register(nameOrChainId, networkFunc) {
-        if (typeof (nameOrChainId) === "number") {
-            nameOrChainId = BigInt(nameOrChainId);
-        }
-        const existing = Networks.get(nameOrChainId);
-        if (existing) {
-            errors_assertArgument(false, `conflicting network for ${JSON.stringify(existing.name)}`, "nameOrChainId", nameOrChainId);
-        }
-        Networks.set(nameOrChainId, networkFunc);
-    }
-}
-// See: https://chainlist.org
-let injected = false;
-function injectCommonNetworks() {
-    if (injected) {
-        return;
-    }
-    injected = true;
-    /// Register popular Ethereum networks
-    function registerEth(name, chainId, options) {
-        const func = function () {
-            const network = new Network(name, chainId);
-            // We use 0 to disable ENS
-            if (options.ensNetwork != null) {
-                network.attachPlugin(new EnsPlugin(null, options.ensNetwork));
-            }
-            if (options.priorityFee) {
-                //                network.attachPlugin(new MaxPriorityFeePlugin(options.priorityFee));
-            }
-            /*
-                        if (options.etherscan) {
-                            const { url, apiKey } = options.etherscan;
-                            network.attachPlugin(new EtherscanPlugin(url, apiKey));
-                        }
-            */
-            network.attachPlugin(new GasCostPlugin());
-            return network;
-        };
-        // Register the network by name and chain ID
-        Network.register(name, func);
-        Network.register(chainId, func);
-        if (options.altNames) {
-            options.altNames.forEach((name) => {
-                Network.register(name, func);
-            });
-        }
-    }
-    registerEth("mainnet", 1, { ensNetwork: 1, altNames: ["homestead"] });
-    registerEth("ropsten", 3, { ensNetwork: 3 });
-    registerEth("rinkeby", 4, { ensNetwork: 4 });
-    registerEth("goerli", 5, { ensNetwork: 5 });
-    registerEth("kovan", 42, { ensNetwork: 42 });
-    registerEth("sepolia", 11155111, {});
-    registerEth("classic", 61, {});
-    registerEth("classicKotti", 6, {});
-    registerEth("xdai", 100, { ensNetwork: 1 });
-    registerEth("optimism", 10, {
-        ensNetwork: 1,
-        etherscan: { url: "https:/\/api-optimistic.etherscan.io/" }
-    });
-    registerEth("optimism-goerli", 420, {
-        etherscan: { url: "https:/\/api-goerli-optimistic.etherscan.io/" }
-    });
-    registerEth("arbitrum", 42161, {
-        ensNetwork: 1,
-        etherscan: { url: "https:/\/api.arbiscan.io/" }
-    });
-    registerEth("arbitrum-goerli", 421613, {
-        etherscan: { url: "https:/\/api-goerli.arbiscan.io/" }
-    });
-    // Polygon has a 35 gwei maxPriorityFee requirement
-    registerEth("matic", 137, {
-        ensNetwork: 1,
-        //        priorityFee: 35000000000,
-        etherscan: {
-            //            apiKey: "W6T8DJW654GNTQ34EFEYYP3EZD9DD27CT7",
-            url: "https:/\/api.polygonscan.com/"
-        }
-    });
-    registerEth("matic-mumbai", 80001, {
-        altNames: ["maticMumbai", "maticmum"],
-        //        priorityFee: 35000000000,
-        etherscan: {
-            //            apiKey: "W6T8DJW654GNTQ34EFEYYP3EZD9DD27CT7",
-            url: "https:/\/api-testnet.polygonscan.com/"
-        }
-    });
-    registerEth("bnb", 56, {
-        ensNetwork: 1,
-        etherscan: {
-            //            apiKey: "EVTS3CU31AATZV72YQ55TPGXGMVIFUQ9M9",
-            url: "http:/\/api.bscscan.com"
-        }
-    });
-    registerEth("bnbt", 97, {
-        etherscan: {
-            //            apiKey: "EVTS3CU31AATZV72YQ55TPGXGMVIFUQ9M9",
-            url: "http:/\/api-testnet.bscscan.com"
-        }
-    });
-}
-//# sourceMappingURL=network.js.map
 ;// CONCATENATED MODULE: ./node_modules/ethers/lib.esm/providers/subscriber-polling.js
 /* provided dependency */ var subscriber_polling_console = __webpack_require__(108);
 
@@ -22128,6 +22128,12 @@ class ChainSyncer {
             writable: true,
             value: {}
         });
+        Object.defineProperty(this, "blocked_providers", {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value: {}
+        });
         Object.defineProperty(this, "_next_safe_at", {
             enumerable: true,
             configurable: true,
@@ -22534,14 +22540,22 @@ class ChainSyncer {
             let handler_res;
             for (const rpc_url of rpc_urls) {
                 try {
-                    if (!this.cached_providers[rpc_url]) {
-                        this.cached_providers[rpc_url] = new JsonRpcProvider(rpc_url, this.network_id, {
+                    if (!this.cached_providers[rpc_url] && !this.blocked_providers[rpc_url]) {
+                        const network = Network.from(this.network_id);
+                        this.cached_providers[rpc_url] = new JsonRpcProvider(rpc_url, network, {
                             polling: false,
+                            staticNetwork: network
                         });
-                        // @ts-ignore
-                        this.cached_providers[rpc_url]._detectNetwork = () => __awaiter(this, void 0, void 0, function* () {
-                            return new Network('-', this.network_id);
-                        });
+                        const detected_network = yield this.cached_providers[rpc_url]._detectNetwork().catch(() => null);
+                        if (detected_network === null || detected_network.chainId !== network.chainId) {
+                            if (detected_network === null) {
+                                this.logger.error(`RPC ${rpc_url} is not available`);
+                            }
+                            else {
+                                this.logger.error(`RPC ${rpc_url} is not available for network ${network.name}`);
+                            }
+                            this.blocked_providers[rpc_url] = 1;
+                        }
                     }
                     handler_res = yield handler(this.cached_providers[rpc_url]);
                     break;

@@ -9,6 +9,7 @@ export class ChainSyncer {
 
   cached_providers: Record<string, JsonRpcProvider> = {}
   cached_contracts = {} as Record<string, Contract>
+  blocked_providers: Record<string, number> = {}
 
   _next_safe_at = 0
   _is_started = false
@@ -391,16 +392,27 @@ export class ChainSyncer {
     for (const rpc_url of rpc_urls) {
       try {
 
-        if(!this.cached_providers[rpc_url]) {
+        if(!this.cached_providers[rpc_url] && !this.blocked_providers[rpc_url]) {
+
+          const network = Network.from(this.network_id);
           
-          this.cached_providers[rpc_url] = new Ethers.JsonRpcProvider(rpc_url, this.network_id, {
+          this.cached_providers[rpc_url] = new Ethers.JsonRpcProvider(rpc_url, network, {
             polling: false,
+            staticNetwork: network
           });
 
-          // @ts-ignore
-          this.cached_providers[rpc_url]._detectNetwork = async () => {
-            return new Network('-', this.network_id);
-          };
+          const detected_network = await this.cached_providers[rpc_url]._detectNetwork().catch(() => null);
+
+          if(detected_network === null || detected_network.chainId !== network.chainId) {
+
+            if(detected_network === null) {
+              this.logger.error(`RPC ${rpc_url} is not available`);
+            } else {
+              this.logger.error(`RPC ${rpc_url} is not available for network ${network.name}`);
+            }
+
+            this.blocked_providers[rpc_url] = 1;
+          }
         }
 
         handler_res = await handler(this.cached_providers[rpc_url]);
