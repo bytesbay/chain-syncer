@@ -22554,7 +22554,8 @@ class ChainSyncer {
                         const network = Network.from(this.network_id);
                         this.cached_providers[rpc_url] = new JsonRpcProvider(rpc_url, network, {
                             polling: false,
-                            staticNetwork: network
+                            staticNetwork: network,
+                            batchMaxCount: 1
                         });
                         const detected_network = yield this.cached_providers[rpc_url]._detectNetwork().catch(() => null);
                         if (detected_network === null || detected_network.chainId !== network.chainId) {
