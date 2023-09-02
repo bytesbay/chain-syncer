@@ -403,7 +403,7 @@ export class ChainSyncer {
           this.cached_providers[rpc_url] = new Ethers.JsonRpcProvider(rpc_url, network, {
             polling: false,
             staticNetwork: network,
-            batchMaxCount: 1
+            // batchMaxCount: 1
           });
 
           const detected_network = await this.cached_providers[rpc_url]._detectNetwork().catch(() => null);
