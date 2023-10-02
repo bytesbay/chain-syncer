@@ -10,6 +10,7 @@ export class ChainSyncer {
   cached_providers: Record<string, JsonRpcProvider> = {}
   cached_contracts = {} as Record<string, Contract>
   blocked_providers: Record<string, number> = {}
+  batch_max_count = 1;
 
   _next_safe_at = 0
   _is_started = false
@@ -403,7 +404,7 @@ export class ChainSyncer {
           this.cached_providers[rpc_url] = new Ethers.JsonRpcProvider(rpc_url, network, {
             polling: false,
             staticNetwork: network,
-            // batchMaxCount: 1
+            batchMaxCount: this.batch_max_count
           });
 
           const detected_network = await this.cached_providers[rpc_url]._detectNetwork().catch(() => null);

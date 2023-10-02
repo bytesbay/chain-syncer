@@ -19,6 +19,7 @@ export class ChainSyncer {
     cached_providers: Record<string, JsonRpcProvider>;
     cached_contracts: Record<string, Ethers.Contract>;
     blocked_providers: Record<string, number>;
+    batch_max_count: number;
     _next_safe_at: number;
     _is_started: boolean;
     _is_scanner_busy: boolean;

@@ -22144,6 +22144,12 @@ class ChainSyncer {
             writable: true,
             value: {}
         });
+        Object.defineProperty(this, "batch_max_count", {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value: 1
+        });
         Object.defineProperty(this, "_next_safe_at", {
             enumerable: true,
             configurable: true,
@@ -22558,7 +22564,7 @@ class ChainSyncer {
                         this.cached_providers[rpc_url] = new JsonRpcProvider(rpc_url, network, {
                             polling: false,
                             staticNetwork: network,
-                            // batchMaxCount: 1
+                            batchMaxCount: this.batch_max_count
                         });
                         const detected_network = yield this.cached_providers[rpc_url]._detectNetwork().catch(() => null);
                         if (detected_network === null || detected_network.chainId !== network.chainId) {
